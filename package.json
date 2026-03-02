@@ -1,0 +1,35 @@
+{
+  "name": "technavyug-backend",
+  "version": "1.0.0",
+  "description": "This project is a combination of LMS + CMS + RBAC",
+  "homepage": "https://github.com/kamlesh0928/technavyug-backend#readme",
+  "bugs": {
+    "url": "https://github.com/kamlesh0928/technavyug-backend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kamlesh0928/technavyug-backend.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.3.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.2.3",
+    "nodemon": "^3.1.14"
+  }
+}
