@@ -1,10 +1,19 @@
 import mongoose from "mongoose";
 
 const tokenSchema = new mongoose.Schema({
-  userId: mongoose.Schema.Types.ObjectId,
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
   token: {
     type: String,
+    required: true,
+  },
+  type: {
+    type: String,
     enum: ["VERIFY_EMAIL", "RESET_PASSWORD"],
+    required: true,
   },
   expiresAt: {
     type: Date,
@@ -12,6 +21,4 @@ const tokenSchema = new mongoose.Schema({
   },
 });
 
-const VerificationToken = mongoose.model("VerificationToken", tokenSchema);
-
-export default VerificationToken;
+export default mongoose.model("VerificationToken", tokenSchema);
