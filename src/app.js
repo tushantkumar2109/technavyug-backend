@@ -1,22 +1,65 @@
-const express = require("express");
-const dotenv = require("dotenv");
-const cors = require("cors");
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser";
+import dotenv from "dotenv";
 
+import authRoutes from "./routes/auth.route.js";
+
+// Load environment variables
 dotenv.config();
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// Security middleware to set HTTP response headers
+app.use(helmet());
+
+// CORS configuration
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+  }),
+);
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMS
+});
+app.use(limiter);
+
+// Body and Cookie Parsing middlewares
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-// Root route
-app.get("/", (req, res) => {
-  res.send("API is running...");
+// Server health check route
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    message: "Server is running",
+  });
 });
 
-const PORT = process.env.PORT || 5000;
+// API routes
+app.use("/api/v1/auth", authRoutes);
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// 404 handler for undefined routes
+app.use((req, res) => {
+  res.status(404).json({
+    message: "Route not found",
+  });
 });
+
+// Global error handler middleware
+app.use((err, req, res, next) => {
+  console.error(err);
+
+  res.status(err.status || 500).json({
+    message: err.message || "Internal Server Error",
+  });
+});
+
+export default app;
