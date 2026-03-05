@@ -7,11 +7,12 @@ import dotenv from "dotenv";
 
 import authRoutes from "./routes/auth.route.js";
 
+// Load environment variables
 dotenv.config();
 
 const app = express();
 
-// Security middleware
+// Security middleware to set HTTP response headers
 app.use(helmet());
 
 // CORS configuration
@@ -25,17 +26,16 @@ app.use(
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMS
+  max: 100, // Limit each IP to 100 requests per windowMS
 });
-
 app.use(limiter);
 
-// Body Parsing
+// Body and Cookie Parsing middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Health check route
+// Server health check route
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
@@ -46,14 +46,14 @@ app.get("/health", (req, res) => {
 // API routes
 app.use("/api/v1/auth", authRoutes);
 
-// 404 handler
+// 404 handler for undefined routes
 app.use((req, res) => {
   res.status(404).json({
     message: "Route not found",
   });
 });
 
-// Global error handler
+// Global error handler middleware
 app.use((err, req, res, next) => {
   console.error(err);
 

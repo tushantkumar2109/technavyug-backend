@@ -12,4 +12,6 @@ const tokenSchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model("VerificationToken", tokenSchema);
+const VerificationToken = mongoose.model("VerificationToken", tokenSchema);
+
+export default VerificationToken;

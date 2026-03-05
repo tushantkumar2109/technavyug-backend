@@ -1,23 +1,25 @@
 import express from "express";
 import { body } from "express-validator";
 
-import * as authController from "../controllers/auth.controller.js";
-
+import authController from "../controllers/auth.controller.js";
 import validate from "../middlewares/validate.middleware.js";
 
 const router = express.Router();
 
+// Registration route with input validation
 router.post(
   "/register",
-  body("email").isEmail(),
-  body("password").isLength({ min: 6 }),
+  body("email").isEmail().withMessage("Provide a valid email"),
+  body("password")
+    .isLength({ min: 6 })
+    .withMessage("Password must be at least 6 characters"),
   validate,
-  auth.register,
+  authController.register,
 );
 
-router.post("/login", auth.login);
-router.post("/logout", auth.logout);
-router.post("/forgot-password", auth.forgotPassword);
-router.post("/reset-password", auth.resetPassword);
+router.post("/login", authController.login);
+router.post("/logout", authController.logout);
+router.post("/forgot-password", authController.forgotPassword);
+router.post("/reset-password", authController.resetPassword);
 
 export default router;

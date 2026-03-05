@@ -1,8 +1,7 @@
 import mongoose from "mongoose";
 
 import app from "./app.js";
-
-import Logger from "./utlis/logger.js";
+import Logger from "./utils/logger.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -17,4 +16,5 @@ mongoose
   })
   .catch((err) => {
     Logger.error("Database connection failed:", err);
+    process.exit(1); // Exit process on database connection failure
   });

@@ -23,6 +23,7 @@ class Logger {
   }
 
   static error(message, error = null) {
+    // Always log erros, even in production
     console.error(`ERROR: ${message}`);
     if (error) console.error(error);
   }

@@ -2,7 +2,11 @@ import mongoose, { mongo } from "mongoose";
 
 const refreshTokenSchema = new mongoose.Schema(
   {
-    userId: mongoose.Schema.Types.ObjectId,
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     token: {
       type: String,
       required: true,
@@ -20,3 +24,7 @@ const refreshTokenSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+const RefreshToken = mongoose.model("RefreshToken", refreshTokenSchema);
+
+export default RefreshToken;

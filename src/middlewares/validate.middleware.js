@@ -1,5 +1,6 @@
 import { validationResult } from "express-validator";
 
+// Middleware to catch express-validator errors
 export default (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
