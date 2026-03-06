@@ -3,12 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
-import dotenv from "dotenv";
 
 import authRoutes from "./routes/auth.route.js";
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 

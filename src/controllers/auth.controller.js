@@ -45,7 +45,7 @@ const register = async (req, res) => {
     });
 
     // Send verification email
-    const verificationUrl = `${process.env.BASE_URL}/verify-email?token=${verificationToken}`;
+    const verificationUrl = `${process.env.BASE_URL}/api/v1/auth/verify-email?token=${verificationToken}`;
     await sendEmail(
       user.email,
       "Verify your email",
@@ -56,6 +56,64 @@ const register = async (req, res) => {
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
     Logger.error("Error during user registration", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const verifyEmail = async (req, res) => {
+  try {
+    const token = req.query.token;
+
+    if (!token) {
+      Logger.warn("Email verification attempted without a token");
+      return res
+        .status(400)
+        .json({ message: "Verification token is required" });
+    }
+
+    // Look for a valid, unexpired token of the correct type
+    const record = await VerificationToken.findOne({
+      token,
+      type: "VERIFY_EMAIL",
+      expiresAt: { $gt: Date.now() },
+    });
+
+    if (!record) {
+      Logger.warn("Attempt to use invalid or expired verification token");
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    // Identify the user associated with the token
+    const user = await User.findById(record.userId);
+    if (!user) {
+      Logger.error("User associated with verification token not found", {
+        userId: record.userId,
+      });
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if the user is already verified (edge case protection)
+    if (user.emailVerified) {
+      Logger.info("User attempted to verify an already verified email", {
+        userId: user._id,
+      });
+
+      // Delete the redundant token just in case
+      await VerificationToken.deleteOne({ _id: record._id });
+      return res.status(400).json({ message: "Email is already verified" });
+    }
+
+    // Update the user's status
+    user.emailVerified = true;
+    await user.save();
+
+    // Clean up the used token
+    await VerificationToken.deleteOne({ _id: record._id });
+
+    Logger.info("Email verified successfully", { userId: user._id });
+    res.status(200).json({ message: "Email verified successfully" });
+  } catch (error) {
+    Logger.error("Error during email verification", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -216,6 +274,7 @@ const resetPassword = async (req, res) => {
 
 export default {
   register,
+  verifyEmail,
   login,
   logout,
   forgotPassword,
