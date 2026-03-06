@@ -1,6 +1,14 @@
 import nodemailer from "nodemailer";
 import Logger from "../utils/logger.js";
 
+if (
+  !process.env.SMTP_HOST ||
+  !process.env.SMTP_USER ||
+  !process.env.SMTP_PASS
+) {
+  Logger.error("SMTP environment variables are missing!");
+}
+
 // Configure the SMTP transporter
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -15,7 +23,9 @@ const transporter = nodemailer.createTransport({
 const sendEmail = async (to, subject, htmlContent) => {
   try {
     const mailOptions = {
-      from: process.env.SMTP_FROM_EMAIL || '"Support" <noreply@technavyug-admin.com>',
+      from:
+        process.env.SMTP_FROM_EMAIL ||
+        '"Support" <noreply@technavyug-admin.com>',
       to,
       subject,
       html: htmlContent,

@@ -17,6 +17,7 @@ router.post(
   authController.register,
 );
 
+router.get("/verify-email", authController.verifyEmail);
 router.post("/login", authController.login);
 router.post("/logout", authController.logout);
 router.post("/forgot-password", authController.forgotPassword);
