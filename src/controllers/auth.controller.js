@@ -11,6 +11,8 @@ import {
   generateRefreshToken,
 } from "../services/token.service.js";
 
+import verificationEmailTemplate from "../templates/email/verifyEmail.template.js";
+
 import Logger from "../utils/logger.js";
 
 const register = async (req, res) => {
@@ -49,7 +51,7 @@ const register = async (req, res) => {
     await sendEmail(
       user.email,
       "Verify your email",
-      `<p>Please click <a href="${verificationUrl}">here</a> to verify your email.</p>`,
+      verificationEmailTemplate(user.name, verificationUrl),
     );
 
     Logger.info("User registered successfully", { userId: user._id });
