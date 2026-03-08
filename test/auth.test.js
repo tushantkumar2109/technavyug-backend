@@ -9,6 +9,8 @@ import User from "../src/models/user.model.js";
 import VerificationToken from "../src/models/verificationToken.js";
 import RefreshToken from "../src/models/refreshToken.js";
 
+jest.setTimeout(30000); // Increase timeout for async operations, especially with in-memory MongoDB setup
+
 let mongoServer;
 
 // Initialize the in-memory database before all tests run
