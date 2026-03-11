@@ -1,50 +1,40 @@
 import { jest } from "@jest/globals";
 import "dotenv/config";
 import request from "supertest";
-import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import { MongoMemoryServer } from "mongodb-memory-server";
+
 import app from "../src/app.js";
-import User from "../src/models/user.model.js";
-import VerificationToken from "../src/models/verificationToken.js";
-import RefreshToken from "../src/models/refreshToken.js";
+import {
+  sequelize,
+  User,
+  VerificationToken,
+  RefreshToken,
+} from "../src/models/index.js";
 
-jest.setTimeout(30000); // Increase timeout for async operations, especially with in-memory MongoDB setup
+// Tell Jest to wait up to 15 seconds before failing a test
+jest.setTimeout(15000);
 
-let mongoServer;
-
-// Initialize the in-memory database before all tests run
+// Initialize Sequelize Database before all tests run
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  const mongoUri = mongoServer.getUri();
-
-  if (mongoose.connection.readyState !== 0) {
-    await mongoose.disconnect();
-  }
-
-  await mongoose.connect(mongoUri);
+  await sequelize.authenticate();
 });
 
 // Clean up the database and clear mock histories between each test
 beforeEach(async () => {
-  const collections = mongoose.connection.collections;
-  for (const key in collections) {
-    const collection = collections[key];
-    await collection.deleteMany({});
-  }
+  // force: true drops all tables and recreates them, ensuring a clean slate for each test
+  await sequelize.sync({ force: true });
   jest.clearAllMocks();
 });
 
-// Disconnect and shut down the memory server after all tests are complete
+// Disconnect and shut down the database connection after all tests are complete
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  await sequelize.close();
 });
 
 describe("Authentication API Endpoints", () => {
   // Registration Flow Tests
   describe("POST /api/v1/auth/register", () => {
-    test("Should successfully register a new user and trigger an email", async () => {
+    test("Should successfully register a new user", async () => {
       const response = await request(app).post("/api/v1/auth/register").send({
         name: "John Doe",
         email: "john@example.com",
@@ -56,13 +46,15 @@ describe("Authentication API Endpoints", () => {
       expect(response.body.message).toMatch(/registered successfully/i);
 
       // Verify the user exists in the database
-      const userInDb = await User.findOne({ email: "john@example.com" });
+      const userInDb = await User.findOne({
+        where: { email: "john@example.com" },
+      });
       expect(userInDb).not.toBeNull();
       expect(userInDb.emailVerified).toBe(false);
 
       // Verify a verification token was created
       const tokenInDb = await VerificationToken.findOne({
-        userId: userInDb._id,
+        where: { userId: userInDb.id },
       });
       expect(tokenInDb).not.toBeNull();
       expect(tokenInDb.type).toBe("VERIFY_EMAIL");
@@ -123,7 +115,9 @@ describe("Authentication API Endpoints", () => {
       expect(response.body.refreshToken).toBeDefined();
 
       // Check if refresh token was saved to the database
-      const tokenInDb = await RefreshToken.findOne({ userId: testUser._id });
+      const tokenInDb = await RefreshToken.findOne({
+        where: { userId: testUser.id },
+      });
       expect(tokenInDb).not.toBeNull();
       expect(tokenInDb.isRevoked).toBe(false);
 
@@ -157,14 +151,20 @@ describe("Authentication API Endpoints", () => {
   // Logout Flow Tests
   describe("POST /api/v1/auth/logout", () => {
     test("Should successfully log out and revoke token", async () => {
-      const mockUserId = new mongoose.Types.ObjectId();
+      // FIX: Create an actual user in the DB to satisfy the Foreign Key constraint
+      const user = await User.create({
+        name: "Logout User",
+        email: "logoutuser@example.com",
+        password: "password123",
+      });
+
       const mockToken = "mock-refresh-token-string";
 
-      // Seed a refresh token to revoke
+      // Seed a refresh token to revoke, using the real user's ID
       await RefreshToken.create({
-        userId: mockUserId,
+        userId: user.id,
         token: mockToken,
-        expiresAt: Date.now() + 100000,
+        expiresAt: new Date(Date.now() + 100000),
       });
 
       const response = await request(app)
@@ -175,7 +175,9 @@ describe("Authentication API Endpoints", () => {
       expect(response.body.message).toBe("User logged out successfully");
 
       // Verify the token was revoked in the database
-      const revokedToken = await RefreshToken.findOne({ token: mockToken });
+      const revokedToken = await RefreshToken.findOne({
+        where: { token: mockToken },
+      });
       expect(revokedToken.isRevoked).toBe(true);
     });
   });
@@ -192,7 +194,7 @@ describe("Authentication API Endpoints", () => {
       });
     });
 
-    test("Should send a reset password email for a valid user", async () => {
+    test("Should successfully generate a reset password token for a valid user", async () => {
       const response = await request(app)
         .post("/api/v1/auth/forgot-password")
         .send({ email: "reset@example.com" });
@@ -200,8 +202,10 @@ describe("Authentication API Endpoints", () => {
       expect(response.status).toBe(200);
 
       const resetTokenDb = await VerificationToken.findOne({
-        userId: testUser._id,
-        type: "RESET_PASSWORD",
+        where: {
+          userId: testUser.id,
+          type: "RESET_PASSWORD",
+        },
       });
       expect(resetTokenDb).not.toBeNull();
     });
@@ -219,10 +223,10 @@ describe("Authentication API Endpoints", () => {
 
       // Seed a valid reset token
       await VerificationToken.create({
-        userId: testUser._id,
+        userId: testUser.id,
         token: validToken,
         type: "RESET_PASSWORD",
-        expiresAt: Date.now() + 15 * 60 * 1000,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
       });
 
       const response = await request(app)
@@ -235,12 +239,12 @@ describe("Authentication API Endpoints", () => {
 
       // Verify the token was deleted
       const tokenExists = await VerificationToken.findOne({
-        token: validToken,
+        where: { token: validToken },
       });
       expect(tokenExists).toBeNull();
 
       // Verify the password was actually updated
-      const updatedUser = await User.findById(testUser._id);
+      const updatedUser = await User.findByPk(testUser.id);
       const isMatch = await bcrypt.compare(
         "newsecurepassword",
         updatedUser.password,
@@ -256,6 +260,67 @@ describe("Authentication API Endpoints", () => {
 
       expect(response.status).toBe(400);
       expect(response.body.message).toBe("Invalid or expired token");
+    });
+  });
+
+  // Email Verification Flow Tests
+  describe("GET /api/v1/auth/verify-email", () => {
+    let testUser;
+    let validToken;
+
+    beforeEach(async () => {
+      // Seed an unverified user
+      testUser = await User.create({
+        name: "Unverified User",
+        email: "unverified@example.com",
+        password: "password123",
+        emailVerified: false,
+      });
+
+      validToken = "valid-verify-token-123";
+
+      // Seed a valid verification token linked to the user
+      await VerificationToken.create({
+        userId: testUser.id,
+        token: validToken,
+        type: "VERIFY_EMAIL",
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      });
+    });
+
+    test("Should successfully verify account with a valid token", async () => {
+      const response = await request(app)
+        .get("/api/v1/auth/verify-email")
+        .query({ token: validToken });
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe("Email verified successfully");
+
+      // Verify the user's status was updated in the database
+      const updatedUser = await User.findByPk(testUser.id);
+      expect(updatedUser.emailVerified).toBe(true);
+
+      // Verify the token was securely deleted
+      const tokenExists = await VerificationToken.findOne({
+        where: { token: validToken },
+      });
+      expect(tokenExists).toBeNull();
+    });
+
+    test("Should fail with an invalid or expired token", async () => {
+      const response = await request(app)
+        .get("/api/v1/auth/verify-email")
+        .query({ token: "some-fake-invalid-token" });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe("Invalid or expired token");
+    });
+
+    test("Should fail if token is missing entirely", async () => {
+      const response = await request(app).get("/api/v1/auth/verify-email"); // No query parameters
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe("Verification token is required");
     });
   });
 });

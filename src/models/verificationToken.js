@@ -1,24 +1,28 @@
-import mongoose from "mongoose";
+import { DataTypes } from "sequelize";
+import sequelize from "../config/db.js";
 
-const tokenSchema = new mongoose.Schema({
+const VerificationToken = sequelize.define("VerificationToken", {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true,
+  },
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
+    type: DataTypes.UUID,
+    allowNull: false,
   },
   token: {
-    type: String,
-    required: true,
+    type: DataTypes.STRING,
+    allowNull: false,
   },
   type: {
-    type: String,
-    enum: ["VERIFY_EMAIL", "RESET_PASSWORD"],
-    required: true,
+    type: DataTypes.ENUM("VERIFY_EMAIL", "RESET_PASSWORD"),
+    allowNull: false,
   },
   expiresAt: {
-    type: Date,
-    required: true,
+    type: DataTypes.DATE,
+    allowNull: false,
   },
 });
 
-export default mongoose.model("VerificationToken", tokenSchema);
+export default VerificationToken;

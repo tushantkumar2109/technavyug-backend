@@ -1,43 +1,37 @@
-import mongoose from "mongoose";
+import { DataTypes } from "sequelize";
+import sequelize from "../config/db.js";
 
-const userSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    email: {
-      type: String,
-      unique: true,
-      required: true,
-      trim: true,
-    },
-    password: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    role: {
-      type: String,
-      enum: ["Student", "Instructor", "Admin", "Sub Admin"],
-      default: "Student",
-    },
-    emailVerified: {
-      type: Boolean,
-      default: false,
-    },
-    status: {
-      type: String,
-      enum: ["Active", "Blocked"],
-      default: "Active",
-    },
+const User = sequelize.define("User", {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true,
   },
-  {
-    timestamps: true,
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false,
   },
-);
-
-const User = mongoose.model("User", userSchema);
+  email: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  role: {
+    type: DataTypes.ENUM("Student", "Instructor", "Admin", "Sub Admin"),
+    defaultValue: "Student",
+  },
+  emailVerified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  status: {
+    type: DataTypes.ENUM("Active", "Blocked"),
+    defaultValue: "Active",
+  },
+});
 
 export default User;
