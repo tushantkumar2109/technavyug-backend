@@ -1,9 +1,8 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { Op } from "sequelize";
 
-import User from "../models/user.model.js";
-import VerificationToken from "../models/verificationToken.js";
-import RefreshToken from "../models/refreshToken.js";
+import { User, VerificationToken, RefreshToken } from "../models/index.js";
 
 import sendEmail from "../services/email.service.js";
 import {
@@ -20,7 +19,7 @@ const register = async (req, res) => {
     const { name, email, password, role } = req.body;
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       Logger.warn("Registration attempt with existing email", { email });
       return res.status(400).json({ message: "User already exists" });
@@ -37,13 +36,13 @@ const register = async (req, res) => {
       role,
     });
 
-    // Generate a verification token
+    // Generate a secure verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
     await VerificationToken.create({
-      userId: user._id,
+      userId: user.id,
       token: verificationToken,
       type: "VERIFY_EMAIL",
-      expiresAt: Date.now() + 15 * 60 * 1000, // 15 minutes
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // Expires in 15 minutes
     });
 
     // Send verification email
@@ -54,7 +53,7 @@ const register = async (req, res) => {
       verificationEmailTemplate(user.name, verificationUrl),
     );
 
-    Logger.info("User registered successfully", { userId: user._id });
+    Logger.info("User registered successfully", { userId: user.id });
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
     Logger.error("Error during user registration", error);
@@ -75,9 +74,11 @@ const verifyEmail = async (req, res) => {
 
     // Look for a valid, unexpired token of the correct type
     const record = await VerificationToken.findOne({
-      token,
-      type: "VERIFY_EMAIL",
-      expiresAt: { $gt: Date.now() },
+      where: {
+        token,
+        type: "VERIFY_EMAIL",
+        expiresAt: { [Op.gt]: new Date() },
+      },
     });
 
     if (!record) {
@@ -86,7 +87,7 @@ const verifyEmail = async (req, res) => {
     }
 
     // Identify the user associated with the token
-    const user = await User.findById(record.userId);
+    const user = await User.findByPk(record.userId);
     if (!user) {
       Logger.error("User associated with verification token not found", {
         userId: record.userId,
@@ -97,11 +98,9 @@ const verifyEmail = async (req, res) => {
     // Check if the user is already verified (edge case protection)
     if (user.emailVerified) {
       Logger.info("User attempted to verify an already verified email", {
-        userId: user._id,
+        userId: user.id,
       });
-
-      // Delete the redundant token just in case
-      await VerificationToken.deleteOne({ _id: record._id });
+      await VerificationToken.destroy({ where: { id: record.id } });
       return res.status(400).json({ message: "Email is already verified" });
     }
 
@@ -110,9 +109,9 @@ const verifyEmail = async (req, res) => {
     await user.save();
 
     // Clean up the used token
-    await VerificationToken.deleteOne({ _id: record._id });
+    await VerificationToken.destroy({ where: { id: record.id } });
 
-    Logger.info("Email verified successfully", { userId: user._id });
+    Logger.info("Email verified successfully", { userId: user.id });
     res.status(200).json({ message: "Email verified successfully" });
   } catch (error) {
     Logger.error("Error during email verification", error);
@@ -125,7 +124,7 @@ const login = async (req, res) => {
     const { email, password, rememberMe } = req.body;
 
     // Find user by email
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ where: { email } });
     if (!user) {
       Logger.warn("Login attempt with non-existent email", { email });
       return res.status(404).json({ message: "User not found" });
@@ -151,9 +150,9 @@ const login = async (req, res) => {
 
     // Save refresh token to database
     await RefreshToken.create({
-      userId: user._id,
+      userId: user.id,
       token: refreshToken,
-      expiresAt: Date.now() + refreshTokenMaxAge,
+      expiresAt: new Date(Date.now() + refreshTokenMaxAge),
     });
 
     // Set HTTP-only cookie for the refresh token
@@ -163,7 +162,7 @@ const login = async (req, res) => {
       maxAge: refreshTokenMaxAge,
     });
 
-    Logger.info("User logged in successfully", { userId: user._id });
+    Logger.info("User logged in successfully", { userId: user.id });
     res.status(200).json({ accessToken, refreshToken });
   } catch (error) {
     Logger.error("Error during user login", error);
@@ -177,10 +176,9 @@ const logout = async (req, res) => {
     const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
 
     if (refreshToken) {
-      // Find and update the token to mark it as revoked
-      await RefreshToken.findOneAndUpdate(
-        { token: refreshToken },
+      await RefreshToken.update(
         { isRevoked: true },
+        { where: { token: refreshToken } },
       );
     }
 
@@ -200,7 +198,7 @@ const forgotPassword = async (req, res) => {
     const { email } = req.body;
 
     // Validate user existence
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ where: { email } });
     if (!user) {
       Logger.warn("Forgot password requested for unknown email", { email });
       return res.status(404).json({ message: "User not found" });
@@ -210,10 +208,10 @@ const forgotPassword = async (req, res) => {
     const token = crypto.randomBytes(32).toString("hex");
 
     await VerificationToken.create({
-      userId: user._id,
+      userId: user.id,
       token,
       type: "RESET_PASSWORD",
-      expiresAt: Date.now() + 15 * 60 * 1000, // 15 minutes
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // Expires in 15 minutes
     });
 
     // Dispatch reset email
@@ -239,9 +237,11 @@ const resetPassword = async (req, res) => {
 
     // Look for a valid, unexpired token of the correct type
     const record = await VerificationToken.findOne({
-      token,
-      type: "RESET_PASSWORD",
-      expiresAt: { $gt: Date.now() },
+      where: {
+        token,
+        type: "RESET_PASSWORD",
+        expiresAt: { [Op.gt]: new Date() }, // Check if expiration date is greater than current date
+      },
     });
 
     if (!record) {
@@ -250,7 +250,7 @@ const resetPassword = async (req, res) => {
     }
 
     // Identify user
-    const user = await User.findById(record.userId);
+    const user = await User.findByPk(record.userId);
     if (!user) {
       Logger.error("User associated with reset token not found", {
         userId: record.userId,
@@ -264,9 +264,9 @@ const resetPassword = async (req, res) => {
     await user.save();
 
     // Clean up the used token
-    await VerificationToken.deleteOne({ token });
+    await VerificationToken.destroy({ where: { token } });
 
-    Logger.info("Password reset successfully", { userId: user._id });
+    Logger.info("Password reset successfully", { userId: user.id });
     res.status(200).json({ message: "Password reset successfully" });
   } catch (error) {
     Logger.error("Error during reset password", error);

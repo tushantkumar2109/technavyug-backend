@@ -1,15 +1,16 @@
 import "dotenv/config";
-import mongoose from "mongoose";
 
 import app from "./app.js";
+import { sequelize } from "./models/index.js";
 import Logger from "./utils/logger.js";
 
 const PORT = process.env.PORT || 5000;
 
-mongoose
-  .connect(process.env.MONGO_URI)
+// Connect to MySQL and sync models (tables)
+sequelize
+  .sync({ alter: true })
   .then(() => {
-    Logger.info("Connected to MongoDB");
+    Logger.info("Connected to MySQL Database");
 
     app.listen(PORT, () => {
       Logger.info(`Server running on port ${PORT}`);
@@ -17,5 +18,5 @@ mongoose
   })
   .catch((err) => {
     Logger.error("Database connection failed:", err);
-    process.exit(1); // Exit process on database connection failure
+    process.exit(1);
   });
