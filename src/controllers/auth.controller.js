@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
 
 import { User, VerificationToken, RefreshToken } from "../models/index.js";
@@ -11,6 +12,7 @@ import {
 } from "../services/token.service.js";
 
 import verificationEmailTemplate from "../templates/email/verifyEmail.template.js";
+import resetPasswordTemplate from "../templates/email/resetPassword.template.js";
 
 import Logger from "../utils/logger.js";
 
@@ -18,34 +20,32 @@ const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       Logger.warn("Registration attempt with existing email", { email });
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create the user
+    const allowedRoles = ["Student", "Instructor"];
+    const assignedRole = allowedRoles.includes(role) ? role : "Student";
+
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      role,
+      role: assignedRole,
     });
 
-    // Generate a secure verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
     await VerificationToken.create({
       userId: user.id,
       token: verificationToken,
       type: "VERIFY_EMAIL",
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // Expires in 15 minutes
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     });
 
-    // Send verification email
     const verificationUrl = `${process.env.BASE_URL}/api/v1/auth/verify-email?token=${verificationToken}`;
     await sendEmail(
       user.email,
@@ -72,7 +72,6 @@ const verifyEmail = async (req, res) => {
         .json({ message: "Verification token is required" });
     }
 
-    // Look for a valid, unexpired token of the correct type
     const record = await VerificationToken.findOne({
       where: {
         token,
@@ -86,7 +85,6 @@ const verifyEmail = async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired token" });
     }
 
-    // Identify the user associated with the token
     const user = await User.findByPk(record.userId);
     if (!user) {
       Logger.error("User associated with verification token not found", {
@@ -95,7 +93,6 @@ const verifyEmail = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if the user is already verified (edge case protection)
     if (user.emailVerified) {
       Logger.info("User attempted to verify an already verified email", {
         userId: user.id,
@@ -104,11 +101,9 @@ const verifyEmail = async (req, res) => {
       return res.status(400).json({ message: "Email is already verified" });
     }
 
-    // Update the user's status
     user.emailVerified = true;
     await user.save();
 
-    // Clean up the used token
     await VerificationToken.destroy({ where: { id: record.id } });
 
     Logger.info("Email verified successfully", { userId: user.id });
@@ -123,14 +118,17 @@ const login = async (req, res) => {
   try {
     const { email, password, rememberMe } = req.body;
 
-    // Find user by email
     const user = await User.findOne({ where: { email } });
     if (!user) {
       Logger.warn("Login attempt with non-existent email", { email });
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if password is correct
+    if (user.status === "Blocked") {
+      Logger.warn("Login attempt by blocked user", { email });
+      return res.status(403).json({ message: "Account has been blocked" });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       Logger.warn("Invalid password attempt", { email });
@@ -139,40 +137,95 @@ const login = async (req, res) => {
         .json({ message: "Email or password is incorrect" });
     }
 
-    // Generate JWT tokens
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user, rememberMe);
 
-    // Calculate expiration logic
     const refreshTokenMaxAge = rememberMe
-      ? 7 * 24 * 60 * 60 * 1000 // 7 days
-      : 24 * 60 * 60 * 1000; // 1 day
+      ? 7 * 24 * 60 * 60 * 1000
+      : 24 * 60 * 60 * 1000;
 
-    // Save refresh token to database
     await RefreshToken.create({
       userId: user.id,
       token: refreshToken,
       expiresAt: new Date(Date.now() + refreshTokenMaxAge),
     });
 
-    // Set HTTP-only cookie for the refresh token
+    user.lastLoginAt = new Date();
+    await user.save();
+
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
       maxAge: refreshTokenMaxAge,
     });
 
     Logger.info("User logged in successfully", { userId: user.id });
-    res.status(200).json({ accessToken, refreshToken });
+    res.status(200).json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+      },
+    });
   } catch (error) {
     Logger.error("Error during user login", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
+const refreshAccessToken = async (req, res) => {
+  try {
+    const token = req.body.refreshToken || req.cookies?.refreshToken;
+
+    if (!token) {
+      return res.status(400).json({ message: "Refresh token is required" });
+    }
+
+    const storedToken = await RefreshToken.findOne({
+      where: {
+        token,
+        isRevoked: false,
+        expiresAt: { [Op.gt]: new Date() },
+      },
+    });
+
+    if (!storedToken) {
+      return res
+        .status(401)
+        .json({ message: "Invalid or expired refresh token" });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    } catch {
+      storedToken.isRevoked = true;
+      await storedToken.save();
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    const user = await User.findByPk(decoded.id);
+    if (!user || user.status === "Blocked") {
+      return res.status(401).json({ message: "User not found or blocked" });
+    }
+
+    const newAccessToken = generateAccessToken(user);
+
+    Logger.info("Access token refreshed", { userId: user.id });
+    res.status(200).json({ accessToken: newAccessToken });
+  } catch (error) {
+    Logger.error("Error refreshing access token", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 const logout = async (req, res) => {
   try {
-    // Extract token from body or cookies
     const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
 
     if (refreshToken) {
@@ -182,7 +235,6 @@ const logout = async (req, res) => {
       );
     }
 
-    // Clear the HTTP-only cookie
     res.clearCookie("refreshToken");
 
     Logger.info("User logged out successfully");
@@ -197,29 +249,26 @@ const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
-    // Validate user existence
     const user = await User.findOne({ where: { email } });
     if (!user) {
       Logger.warn("Forgot password requested for unknown email", { email });
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Generate reset token
     const token = crypto.randomBytes(32).toString("hex");
 
     await VerificationToken.create({
       userId: user.id,
       token,
       type: "RESET_PASSWORD",
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // Expires in 15 minutes
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     });
 
-    // Dispatch reset email
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
     await sendEmail(
       user.email,
       "Reset Password",
-      `<p>Click <a href="${resetUrl}">here</a> to reset your password. This link expires in 15 minutes.</p>`,
+      resetPasswordTemplate(user.name, resetUrl),
     );
 
     Logger.info("Password reset email sent successfully", { email });
@@ -232,15 +281,14 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   try {
-    const token = req.query.token || req.body.token; // Check both query and body
+    const token = req.query.token || req.body.token;
     const { password } = req.body;
 
-    // Look for a valid, unexpired token of the correct type
     const record = await VerificationToken.findOne({
       where: {
         token,
         type: "RESET_PASSWORD",
-        expiresAt: { [Op.gt]: new Date() }, // Check if expiration date is greater than current date
+        expiresAt: { [Op.gt]: new Date() },
       },
     });
 
@@ -249,7 +297,6 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired token" });
     }
 
-    // Identify user
     const user = await User.findByPk(record.userId);
     if (!user) {
       Logger.error("User associated with reset token not found", {
@@ -258,13 +305,17 @@ const resetPassword = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Update password securely
     const hashedPassword = await bcrypt.hash(password, 10);
     user.password = hashedPassword;
     await user.save();
 
-    // Clean up the used token
     await VerificationToken.destroy({ where: { token } });
+
+    // Revoke all existing refresh tokens for security
+    await RefreshToken.update(
+      { isRevoked: true },
+      { where: { userId: user.id } },
+    );
 
     Logger.info("Password reset successfully", { userId: user.id });
     res.status(200).json({ message: "Password reset successfully" });
@@ -274,11 +325,89 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const getMe = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ["password"] },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ data: user });
+  } catch (error) {
+    Logger.error("Error fetching user profile", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const { name, phone, bio, avatar } = req.body;
+    if (name !== undefined) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (bio !== undefined) user.bio = bio;
+    if (avatar !== undefined) user.avatar = avatar;
+
+    await user.save();
+
+    const { password, ...userData } = user.toJSON();
+    Logger.info("User profile updated", { userId: user.id });
+    res
+      .status(200)
+      .json({ message: "Profile updated successfully", data: userData });
+  } catch (error) {
+    Logger.error("Error updating user profile", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    // Revoke all refresh tokens after password change
+    await RefreshToken.update(
+      { isRevoked: true },
+      { where: { userId: user.id } },
+    );
+
+    Logger.info("Password changed successfully", { userId: user.id });
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    Logger.error("Error changing password", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 export default {
   register,
   verifyEmail,
   login,
+  refreshAccessToken,
   logout,
   forgotPassword,
   resetPassword,
+  getMe,
+  updateProfile,
+  changePassword,
 };

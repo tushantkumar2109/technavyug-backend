@@ -4,11 +4,24 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 
+// Route imports
 import authRoutes from "./routes/auth.route.js";
+import adminUserRoutes from "./routes/admin/user.route.js";
+import adminAnalyticsRoutes from "./routes/admin/analytics.route.js";
+import categoryRoutes from "./routes/category.route.js";
+import courseRoutes from "./routes/course.route.js";
+import enrollmentRoutes from "./routes/enrollment.route.js";
+import productRoutes from "./routes/product.route.js";
+import orderRoutes from "./routes/order.route.js";
+import paymentRoutes from "./routes/payment.route.js";
+import reviewRoutes from "./routes/review.route.js";
+import cmsRoutes from "./routes/cms.route.js";
+import notificationRoutes from "./routes/notification.route.js";
+import ticketRoutes from "./routes/ticket.route.js";
 
 const app = express();
 
-// Security middleware to set HTTP response headers
+// Security middleware
 app.use(helmet());
 
 // CORS configuration
@@ -21,40 +34,62 @@ app.use(
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMS
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests, please try again later" },
 });
 app.use(limiter);
 
-// Body and Cookie Parsing middlewares
-app.use(express.json());
+// Body and Cookie Parsing
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Server health check route
+// Server health check
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
     message: "Server is running",
+    timestamp: new Date().toISOString(),
   });
 });
 
 // API routes
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/admin/users", adminUserRoutes);
+app.use("/api/v1/admin/analytics", adminAnalyticsRoutes);
+app.use("/api/v1/categories", categoryRoutes);
+app.use("/api/v1/courses", courseRoutes);
+app.use("/api/v1/enrollments", enrollmentRoutes);
+app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/orders", orderRoutes);
+app.use("/api/v1/payments", paymentRoutes);
+app.use("/api/v1/reviews", reviewRoutes);
+app.use("/api/v1/cms", cmsRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/tickets", ticketRoutes);
 
-// 404 handler for undefined routes
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     message: "Route not found",
   });
 });
 
-// Global error handler middleware
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error(err);
+  const statusCode = err.statusCode || err.status || 500;
+  const message = err.isOperational ? err.message : "Internal Server Error";
 
-  res.status(err.status || 500).json({
-    message: err.message || "Internal Server Error",
+  if (process.env.NODE_ENV !== "production") {
+    console.error(err);
+  }
+
+  res.status(statusCode).json({
+    message,
+    ...(process.env.NODE_ENV !== "production" && { stack: err.stack }),
   });
 });
 

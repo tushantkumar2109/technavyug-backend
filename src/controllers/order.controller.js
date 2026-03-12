@@ -1,0 +1,238 @@
+import crypto from "crypto";
+import { Op } from "sequelize";
+import { Order, OrderItem, Product, User } from "../models/index.js";
+import { getPagination, getPaginatedResponse } from "../utils/pagination.js";
+import Logger from "../utils/logger.js";
+
+const generateOrderNumber = () => {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = crypto.randomBytes(3).toString("hex").toUpperCase();
+  return `ORD-${timestamp}-${random}`;
+};
+
+const createOrder = async (req, res) => {
+  try {
+    const { items, shippingAddress, paymentMethod, notes } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Order must contain at least one item" });
+    }
+
+    // Validate products and calculate total
+    let totalAmount = 0;
+    const orderItemsData = [];
+
+    for (const item of items) {
+      const product = await Product.findByPk(item.productId);
+      if (!product) {
+        return res.status(404).json({
+          message: `Product not found: ${item.productId}`,
+        });
+      }
+
+      if (product.status !== "Active") {
+        return res.status(400).json({
+          message: `Product is not available: ${product.name}`,
+        });
+      }
+
+      if (product.type === "Physical" && product.stock < item.quantity) {
+        return res.status(400).json({
+          message: `Insufficient stock for: ${product.name}`,
+        });
+      }
+
+      const itemTotal = parseFloat(product.price) * item.quantity;
+      totalAmount += itemTotal;
+
+      orderItemsData.push({
+        productId: product.id,
+        quantity: item.quantity,
+        price: product.price,
+      });
+
+      // Decrement stock for physical products
+      if (product.type === "Physical") {
+        product.stock -= item.quantity;
+        await product.save();
+      }
+    }
+
+    const order = await Order.create({
+      orderNumber: generateOrderNumber(),
+      userId: req.user.id,
+      totalAmount,
+      shippingAddress,
+      paymentMethod,
+      notes,
+    });
+
+    // Create order items
+    for (const itemData of orderItemsData) {
+      await OrderItem.create({
+        orderId: order.id,
+        ...itemData,
+      });
+    }
+
+    const fullOrder = await Order.findByPk(order.id, {
+      include: [
+        { model: OrderItem, as: "items", include: [{ model: Product }] },
+      ],
+    });
+
+    Logger.info("Order created", { orderId: order.id, userId: req.user.id });
+    res
+      .status(201)
+      .json({ message: "Order placed successfully", data: fullOrder });
+  } catch (error) {
+    Logger.error("Error creating order", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const getMyOrders = async (req, res) => {
+  try {
+    const { page, limit, offset } = getPagination(req.query);
+    const { status } = req.query;
+
+    const where = { userId: req.user.id };
+    if (status) where.status = status;
+
+    const { count, rows } = await Order.findAndCountAll({
+      where,
+      include: [
+        {
+          model: OrderItem,
+          as: "items",
+          include: [{ model: Product, attributes: ["id", "name", "images"] }],
+        },
+      ],
+      limit,
+      offset,
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.status(200).json(getPaginatedResponse(rows, count, page, limit));
+  } catch (error) {
+    Logger.error("Error fetching orders", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findByPk(req.params.id, {
+      include: [
+        { model: OrderItem, as: "items", include: [{ model: Product }] },
+        { model: User, attributes: ["id", "name", "email"] },
+      ],
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Users can only view their own orders (unless admin)
+    if (
+      order.userId !== req.user.id &&
+      !["Admin", "Sub Admin"].includes(req.user.role)
+    ) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    res.status(200).json({ data: order });
+  } catch (error) {
+    Logger.error("Error fetching order", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const updateOrderStatus = async (req, res) => {
+  try {
+    const order = await Order.findByPk(req.params.id);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const { status } = req.body;
+    const validStatuses = [
+      "Pending",
+      "Processing",
+      "Shipped",
+      "Delivered",
+      "Cancelled",
+      "Refunded",
+    ];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid order status" });
+    }
+
+    // If cancelling, restore stock
+    if (status === "Cancelled" && order.status !== "Cancelled") {
+      const orderItems = await OrderItem.findAll({
+        where: { orderId: order.id },
+      });
+      for (const item of orderItems) {
+        const product = await Product.findByPk(item.productId);
+        if (product && product.type === "Physical") {
+          product.stock += item.quantity;
+          await product.save();
+        }
+      }
+    }
+
+    order.status = status;
+    await order.save();
+
+    Logger.info("Order status updated", { orderId: order.id, status });
+    res
+      .status(200)
+      .json({ message: "Order status updated successfully", data: order });
+  } catch (error) {
+    Logger.error("Error updating order status", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// Admin: list all orders
+const listAllOrders = async (req, res) => {
+  try {
+    const { page, limit, offset } = getPagination(req.query);
+    const { status, search } = req.query;
+
+    const where = {};
+    if (status) where.status = status;
+    if (search) where.orderNumber = { [Op.like]: `%${search}%` };
+
+    const { count, rows } = await Order.findAndCountAll({
+      where,
+      include: [
+        { model: User, attributes: ["id", "name", "email"] },
+        {
+          model: OrderItem,
+          as: "items",
+          include: [{ model: Product, attributes: ["id", "name"] }],
+        },
+      ],
+      limit,
+      offset,
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.status(200).json(getPaginatedResponse(rows, count, page, limit));
+  } catch (error) {
+    Logger.error("Error listing all orders", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export default {
+  createOrder,
+  getMyOrders,
+  getOrderById,
+  updateOrderStatus,
+  listAllOrders,
+};
