@@ -2,13 +2,14 @@ import express from "express";
 import { body } from "express-validator";
 
 import authController from "../controllers/auth.controller.js";
+import { authenticate } from "../middlewares/auth.middleware.js";
 import validate from "../middlewares/validate.middleware.js";
 
 const router = express.Router();
 
-// Registration route with input validation
 router.post(
   "/register",
+  body("name").notEmpty().withMessage("Name is required"),
   body("email").isEmail().withMessage("Provide a valid email"),
   body("password")
     .isLength({ min: 6 })
@@ -18,9 +19,57 @@ router.post(
 );
 
 router.get("/verify-email", authController.verifyEmail);
-router.post("/login", authController.login);
+
+router.post(
+  "/login",
+  body("email").isEmail().withMessage("Provide a valid email"),
+  body("password").notEmpty().withMessage("Password is required"),
+  validate,
+  authController.login,
+);
+
+router.post("/refresh-token", authController.refreshAccessToken);
 router.post("/logout", authController.logout);
-router.post("/forgot-password", authController.forgotPassword);
-router.post("/reset-password", authController.resetPassword);
+
+router.post(
+  "/forgot-password",
+  body("email").isEmail().withMessage("Provide a valid email"),
+  validate,
+  authController.forgotPassword,
+);
+
+router.post(
+  "/reset-password",
+  body("password")
+    .isLength({ min: 6 })
+    .withMessage("Password must be at least 6 characters"),
+  validate,
+  authController.resetPassword,
+);
+
+// Protected routes
+router.get("/me", authenticate, authController.getMe);
+
+router.put(
+  "/profile",
+  authenticate,
+  body("name").optional().notEmpty().withMessage("Name cannot be empty"),
+  body("phone").optional().isMobilePhone().withMessage("Invalid phone number"),
+  validate,
+  authController.updateProfile,
+);
+
+router.put(
+  "/change-password",
+  authenticate,
+  body("currentPassword")
+    .notEmpty()
+    .withMessage("Current password is required"),
+  body("newPassword")
+    .isLength({ min: 6 })
+    .withMessage("New password must be at least 6 characters"),
+  validate,
+  authController.changePassword,
+);
 
 export default router;

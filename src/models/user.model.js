@@ -21,7 +21,13 @@ const User = sequelize.define("User", {
     allowNull: false,
   },
   role: {
-    type: DataTypes.ENUM("Student", "Instructor", "Admin", "Sub Admin"),
+    type: DataTypes.ENUM(
+      "Student",
+      "Instructor",
+      "Admin",
+      "Sub Admin",
+      "Guest",
+    ),
     defaultValue: "Student",
   },
   emailVerified: {
@@ -31,6 +37,22 @@ const User = sequelize.define("User", {
   status: {
     type: DataTypes.ENUM("Active", "Blocked"),
     defaultValue: "Active",
+  },
+  avatar: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  phone: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  bio: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  lastLoginAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
   },
 });
 
