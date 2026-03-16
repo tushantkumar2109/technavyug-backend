@@ -37,7 +37,7 @@ const createCourse = async (req, res) => {
       thumbnail,
       price: price || 0,
       level,
-      categoryId,
+      categoryId: categoryId || null,
       language,
       instructorId: req.user.id,
     });

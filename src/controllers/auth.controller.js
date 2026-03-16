@@ -48,11 +48,15 @@ const register = async (req, res) => {
 
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
-    await sendEmail(
-      user.email,
-      "Verify your email",
-      verificationEmailTemplate(user.name, verificationUrl),
-    );
+    try {
+      await sendEmail(
+        user.email,
+        "Verify your email",
+        verificationEmailTemplate(user.name, verificationUrl),
+      );
+    } catch (emailError) {
+      Logger.warn("Failed to send verification email, but user was created", { userId: user.id });
+    }
 
     Logger.info("User registered successfully", { userId: user.id });
     res.status(201).json({ message: "User registered successfully" });
@@ -227,7 +231,7 @@ const refreshAccessToken = async (req, res) => {
 
 const logout = async (req, res) => {
   try {
-    const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
+    const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken;
 
     if (refreshToken) {
       await RefreshToken.update(
