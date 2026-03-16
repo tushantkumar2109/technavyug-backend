@@ -22,7 +22,12 @@ const Lecture = sequelize.define("Lecture", {
   videoUrl: {
     type: DataTypes.STRING,
     allowNull: true,
-    comment: "AWS S3 or Vimeo URL",
+    comment: "Cloudinary or external video URL",
+  },
+  videoPublicId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: "Cloudinary public_id for video deletion",
   },
   duration: {
     type: DataTypes.INTEGER,

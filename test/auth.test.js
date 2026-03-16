@@ -11,6 +11,11 @@ import {
   RefreshToken,
 } from "../src/models/index.js";
 
+jest.unstable_mockModule("../src/services/email.service.js", () => ({
+  __esModule: true,
+  default: jest.fn().mockResolvedValue(true),
+}));
+
 // Tell Jest to wait up to 15 seconds before failing a test
 jest.setTimeout(15000);
 

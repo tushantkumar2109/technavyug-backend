@@ -11,6 +11,10 @@ import {
 import { getPagination, getPaginatedResponse } from "../utils/pagination.js";
 import slugify from "../utils/slugify.js";
 import Logger from "../utils/logger.js";
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} from "../middlewares/upload.middleware.js";
 
 const createCourse = async (req, res) => {
   try {
@@ -33,7 +37,7 @@ const createCourse = async (req, res) => {
       thumbnail,
       price: price || 0,
       level,
-      categoryId,
+      categoryId: categoryId || null,
       language,
       instructorId: req.user.id,
     });
@@ -374,16 +378,33 @@ const createLecture = async (req, res) => {
     const maxOrder =
       (await Lecture.max("order", { where: { sectionId } })) || 0;
 
+    let videoUrl = req.body.videoUrl || null;
+    let videoPublicId = null;
+    let duration = req.body.duration ? parseInt(req.body.duration, 10) : 0;
+
+    // If a video file was uploaded via multer, upload to Cloudinary
+    if (req.file) {
+      const result = await uploadToCloudinary(
+        req.file.buffer,
+        `courses/${section.courseId}/lectures`,
+        "video",
+      );
+      videoUrl = result.url;
+      videoPublicId = result.publicId;
+      if (result.duration) duration = result.duration;
+    }
+
     const lecture = await Lecture.create({
       sectionId,
       title: req.body.title,
       type: req.body.type || "Video",
-      videoUrl: req.body.videoUrl,
-      duration: req.body.duration || 0,
+      videoUrl,
+      videoPublicId,
+      duration,
       content: req.body.content,
       resources: req.body.resources || [],
       order: maxOrder + 1,
-      isFree: req.body.isFree || false,
+      isFree: req.body.isFree === "true" || req.body.isFree === true,
     });
 
     // Update course aggregate counters
@@ -521,6 +542,11 @@ const deleteLecture = async (req, res) => {
       !["Admin", "Sub Admin"].includes(req.user.role)
     ) {
       return res.status(403).json({ message: "Not authorized" });
+    }
+
+    // Delete video from Cloudinary if it was uploaded there
+    if (lecture.videoPublicId) {
+      await deleteFromCloudinary(lecture.videoPublicId, "video");
     }
 
     await lecture.destroy();
