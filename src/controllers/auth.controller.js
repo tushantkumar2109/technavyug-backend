@@ -55,7 +55,9 @@ const register = async (req, res) => {
         verificationEmailTemplate(user.name, verificationUrl),
       );
     } catch (emailError) {
-      Logger.warn("Failed to send verification email, but user was created", { userId: user.id });
+      Logger.warn("Failed to send verification email, but user was created", {
+        userId: user.id,
+      });
     }
 
     Logger.info("User registered successfully", { userId: user.id });
@@ -270,11 +272,15 @@ const forgotPassword = async (req, res) => {
     });
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-    await sendEmail(
-      user.email,
-      "Reset Password",
-      resetPasswordTemplate(user.name, resetUrl),
-    );
+    try {
+      await sendEmail(
+        user.email,
+        "Reset Password",
+        resetPasswordTemplate(user.name, resetUrl),
+      );
+    } catch (emailError) {
+      Logger.warn("Failed to send password reset email", { email });
+    }
 
     Logger.info("Password reset email sent successfully", { email });
     res.status(200).json({ message: "Password reset email sent successfully" });
