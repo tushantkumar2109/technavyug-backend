@@ -46,7 +46,8 @@ const register = async (req, res) => {
       expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     });
 
-    const verificationUrl = `${process.env.BASE_URL}/api/v1/auth/verify-email?token=${verificationToken}`;
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
     await sendEmail(
       user.email,
       "Verify your email",

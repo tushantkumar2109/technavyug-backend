@@ -52,7 +52,7 @@ jobs:
       - name: Run tests
         run: npm test
         env:
-          NODE_ENV: ${{ secrets.NODE_ENV }}
+          NODE_ENV: test
           PORT: ${{ secrets.PORT }}
           BASE_URL: ${{ secrets.BASE_URL }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}

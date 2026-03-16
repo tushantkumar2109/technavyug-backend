@@ -3,6 +3,7 @@ import { body } from "express-validator";
 import courseController from "../controllers/course.controller.js";
 import { authenticate, authorize } from "../middlewares/auth.middleware.js";
 import validate from "../middlewares/validate.middleware.js";
+import { uploadVideo } from "../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
@@ -71,11 +72,12 @@ router.put(
   courseController.reorderSections,
 );
 
-// Lecture routes
+// Lecture routes (supports multipart/form-data video upload)
 router.post(
   "/sections/:sectionId/lectures",
   authenticate,
   authorize("Admin", "Sub Admin", "Instructor"),
+  uploadVideo,
   body("title").notEmpty().withMessage("Lecture title is required"),
   validate,
   courseController.createLecture,
