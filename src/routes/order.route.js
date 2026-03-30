@@ -23,10 +23,11 @@ router.post(
 );
 
 router.get("/my", orderController.getMyOrders);
-router.get("/:id", orderController.getOrderById);
 
-// Admin routes
+// Admin routes (must be before /:id to prevent conflicts)
 router.get("/", authorize("Admin", "Sub Admin"), orderController.listAllOrders);
+
+router.get("/:id", orderController.getOrderById);
 
 router.patch(
   "/:id/status",
