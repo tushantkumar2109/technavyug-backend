@@ -14,7 +14,7 @@ router.get("/:id", categoryController.getCategoryById);
 router.post(
   "/",
   authenticate,
-  authorize("Admin", "Sub Admin"),
+  authorize("Admin", "Sub Admin", "Instructor"),
   body("name").notEmpty().withMessage("Category name is required"),
   validate,
   categoryController.createCategory,
