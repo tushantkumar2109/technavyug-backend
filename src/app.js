@@ -18,6 +18,7 @@ import reviewRoutes from "./routes/review.route.js";
 import cmsRoutes from "./routes/cms.route.js";
 import notificationRoutes from "./routes/notification.route.js";
 import ticketRoutes from "./routes/ticket.route.js";
+import contactRoutes from "./routes/contact.route.js";
 
 const app = express();
 
@@ -70,6 +71,7 @@ app.use("/api/v1/reviews", reviewRoutes);
 app.use("/api/v1/cms", cmsRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/tickets", ticketRoutes);
+app.use("/api/v1/contact", contactRoutes);
 
 // 404 handler
 app.use((req, res) => {

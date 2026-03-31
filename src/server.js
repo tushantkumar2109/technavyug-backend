@@ -12,9 +12,12 @@ sequelize
   .then(() => {
     Logger.info("Connected to MySQL Database");
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       Logger.info(`Server running on port ${PORT}`);
     });
+    // Increased timeout for large video uploads (10 minutes)
+    server.timeout = 600000;
+    server.keepAliveTimeout = 65000;
   })
   .catch((err) => {
     Logger.error("Database connection failed:", err);
