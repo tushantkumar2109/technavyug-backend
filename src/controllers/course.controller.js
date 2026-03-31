@@ -14,6 +14,7 @@ import Logger from "../utils/logger.js";
 import {
   uploadToCloudinary,
   deleteFromCloudinary,
+  cleanupFile,
 } from "../middlewares/upload.middleware.js";
 
 const createCourse = async (req, res) => {
@@ -29,12 +30,33 @@ const createCourse = async (req, res) => {
       language,
     } = req.body;
 
+    let finalThumbnail = thumbnail;
+    if (thumbnail && thumbnail.startsWith("data:image")) {
+      try {
+        const base64Data = thumbnail.split(",")[1];
+        if (!base64Data) {
+          throw new Error("Invalid base64 thumbnail data");
+        }
+        const buffer = Buffer.from(base64Data, "base64");
+        const result = await uploadToCloudinary(buffer, "thumbnails", "image");
+        finalThumbnail = result.url;
+        Logger.info("Thumbnail uploaded to Cloudinary", {
+          url: finalThumbnail,
+        });
+      } catch (uploadError) {
+        Logger.error(
+          "Failed to upload thumbnail to Cloudinary, using raw data instead",
+          uploadError,
+        );
+      }
+    }
+
     const course = await Course.create({
       title,
       slug: slugify(title),
       description,
       shortDescription,
-      thumbnail,
+      thumbnail: finalThumbnail,
       price: price || 0,
       level,
       categoryId: categoryId || null,
@@ -183,7 +205,22 @@ const updateCourse = async (req, res) => {
 
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
-        course[field] = req.body[field];
+        if (
+          field === "thumbnail" &&
+          req.body.thumbnail &&
+          req.body.thumbnail.startsWith("data:image")
+        ) {
+          const base64Data = req.body.thumbnail.split(",")[1];
+          const buffer = Buffer.from(base64Data, "base64");
+          const result = await uploadToCloudinary(
+            buffer,
+            "thumbnails",
+            "image",
+          );
+          course.thumbnail = result.url;
+        } else {
+          course[field] = req.body[field];
+        }
       }
     }
 
@@ -368,8 +405,9 @@ const createLecture = async (req, res) => {
       return res.status(404).json({ message: "Section not found" });
     }
 
+    const course = section.Course;
     if (
-      section.Course.instructorId !== req.user.id &&
+      course.instructorId !== req.user.id &&
       !["Admin", "Sub Admin"].includes(req.user.role)
     ) {
       return res.status(403).json({ message: "Not authorized" });
@@ -384,14 +422,30 @@ const createLecture = async (req, res) => {
 
     // If a video file was uploaded via multer, upload to Cloudinary
     if (req.file) {
-      const result = await uploadToCloudinary(
-        req.file.buffer,
-        `courses/${section.courseId}/lectures`,
-        "video",
-      );
-      videoUrl = result.url;
-      videoPublicId = result.publicId;
-      if (result.duration) duration = result.duration;
+      try {
+        const result = await uploadToCloudinary(
+          req.file.path,
+          `courses/${section.courseId}/lectures`,
+          "video",
+        );
+        videoUrl = result.url;
+        videoPublicId = result.publicId;
+        if (result.duration) duration = result.duration;
+      } finally {
+        // Always cleanup the local file
+        await cleanupFile(req.file.path);
+      }
+    }
+
+    // Handle boolean and JSON from FormData
+    const isFree = req.body.isFree === "true" || req.body.isFree === true;
+    let resources = req.body.resources || [];
+    if (typeof resources === "string") {
+      try {
+        resources = JSON.parse(resources);
+      } catch {
+        resources = [];
+      }
     }
 
     const lecture = await Lecture.create({
@@ -402,18 +456,26 @@ const createLecture = async (req, res) => {
       videoPublicId,
       duration,
       content: req.body.content,
-      resources: req.body.resources || [],
+      resources,
       order: maxOrder + 1,
-      isFree: req.body.isFree === "true" || req.body.isFree === true,
+      isFree,
     });
 
-    // Update course aggregate counters
-    const totalLectures = await Lecture.count({
-      include: [{ model: Section, where: { courseId: section.courseId } }],
+    // Update course aggregate counters safely
+    // First, get all section IDs for this course
+    const sections = await Section.findAll({
+      where: { courseId: section.courseId },
+      attributes: ["id"],
     });
+    const sectionIds = sections.map((s) => s.id);
+
+    const totalLectures = await Lecture.count({
+      where: { sectionId: { [Op.in]: sectionIds } },
+    });
+
     const totalDuration =
       (await Lecture.sum("duration", {
-        include: [{ model: Section, where: { courseId: section.courseId } }],
+        where: { sectionId: { [Op.in]: sectionIds } },
       })) || 0;
 
     await Course.update(

@@ -72,4 +72,14 @@ router.put(
   authController.changePassword,
 );
 
+router.delete(
+  "/account",
+  authenticate,
+  body("password")
+    .notEmpty()
+    .withMessage("Password is required to delete account"),
+  validate,
+  authController.deleteAccount,
+);
+
 export default router;

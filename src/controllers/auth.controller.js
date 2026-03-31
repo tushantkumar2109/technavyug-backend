@@ -410,6 +410,35 @@ const changePassword = async (req, res) => {
   }
 };
 
+const deleteAccount = async (req, res) => {
+  try {
+    const { password } = req.body;
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Password is incorrect" });
+    }
+
+    await user.destroy();
+
+    // Revoke all refresh tokens
+    await RefreshToken.destroy({ where: { userId: user.id } });
+
+    res.clearCookie("refreshToken");
+
+    Logger.info("User deleted their own account", { userId: user.id });
+    res.status(200).json({ message: "Account deleted successfully" });
+  } catch (error) {
+    Logger.error("Error deleting account", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 export default {
   register,
   verifyEmail,
@@ -421,4 +450,5 @@ export default {
   getMe,
   updateProfile,
   changePassword,
+  deleteAccount,
 };
