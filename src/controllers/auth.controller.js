@@ -141,7 +141,7 @@ const login = async (req, res) => {
       Logger.warn("Invalid password attempt", { email });
       return res
         .status(401)
-        .json({ message: "Email or password is incorrect" });
+        .json({ message: "Email or Password is incorrect" });
     }
 
     const accessToken = generateAccessToken(user);
