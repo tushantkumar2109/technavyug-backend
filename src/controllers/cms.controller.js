@@ -3,8 +3,7 @@ import { HomepageContent, Blog, Faq, User } from "../models/index.js";
 import { getPagination, getPaginatedResponse } from "../utils/pagination.js";
 import slugify from "../utils/slugify.js";
 import Logger from "../utils/logger.js";
-
-// ===== Homepage Content =====
+import { uploadToCloudinary } from "../middlewares/upload.middleware.js";
 
 const createHomepageContent = async (req, res) => {
   try {
@@ -87,8 +86,6 @@ const deleteHomepageContent = async (req, res) => {
   }
 };
 
-// ===== Blog =====
-
 const createBlog = async (req, res) => {
   try {
     const { title, content, excerpt, coverImage, status, tags } = req.body;
@@ -119,7 +116,8 @@ const listBlogs = async (req, res) => {
     const { status, search, tag } = req.query;
 
     const where = {};
-    // Public endpoint shows only published; admin sees all
+
+    // Admin (authenticated) sees all blogs. Public (unauthenticated) sees only published
     if (status) {
       where.status = status;
     } else if (!req.user || !["Admin", "Sub Admin"].includes(req.user.role)) {
@@ -133,6 +131,13 @@ const listBlogs = async (req, res) => {
       ];
     }
 
+    Logger.info("Fetching blogs", {
+      user: req.user ? `${req.user.name} (${req.user.role})` : "Anonymous",
+      status: where.status || "all",
+      page,
+      limit,
+    });
+
     const { count, rows } = await Blog.findAndCountAll({
       where,
       include: [
@@ -141,6 +146,11 @@ const listBlogs = async (req, res) => {
       limit,
       offset,
       order: [["createdAt", "DESC"]],
+    });
+
+    Logger.info("Blogs fetched successfully", {
+      totalCount: count,
+      returnedCount: rows.length,
     });
 
     res.status(200).json(getPaginatedResponse(rows, count, page, limit));
@@ -227,8 +237,6 @@ const deleteBlog = async (req, res) => {
   }
 };
 
-// ===== FAQ =====
-
 const createFaq = async (req, res) => {
   try {
     const faq = await Faq.create(req.body);
@@ -295,6 +303,29 @@ const deleteFaq = async (req, res) => {
   }
 };
 
+const uploadBlogImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No image file provided" });
+    }
+
+    const { url } = await uploadToCloudinary(
+      req.file.buffer,
+      "blog-images",
+      "image",
+    );
+
+    Logger.info("Blog image uploaded", { fileName: req.file.originalname });
+    res.status(200).json({
+      message: "Image uploaded successfully",
+      data: { url },
+    });
+  } catch (error) {
+    Logger.error("Error uploading blog image", error);
+    res.status(500).json({ message: "Failed to upload image" });
+  }
+};
+
 export default {
   createHomepageContent,
   listHomepageContent,
@@ -309,4 +340,5 @@ export default {
   listFaqs,
   updateFaq,
   deleteFaq,
+  uploadBlogImage,
 };

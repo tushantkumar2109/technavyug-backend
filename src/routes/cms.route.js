@@ -1,10 +1,32 @@
 import express from "express";
 import { body } from "express-validator";
+import jwt from "jsonwebtoken";
 import cmsController from "../controllers/cms.controller.js";
 import { authenticate, authorize } from "../middlewares/auth.middleware.js";
 import validate from "../middlewares/validate.middleware.js";
+import { uploadImage } from "../middlewares/upload.middleware.js";
+import { User } from "../models/index.js";
 
 const router = express.Router();
+
+const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findByPk(decoded.id, {
+        attributes: { exclude: ["password"] },
+      });
+      if (user && user.status !== "Blocked") {
+        req.user = user;
+      }
+    }
+  } catch (err) {
+    // Silently ignore auth errors - just continue as unauthenticated
+  }
+  next();
+};
 
 // ===== Homepage Content =====
 // Public
@@ -35,8 +57,8 @@ router.delete(
 );
 
 // ===== Blogs =====
-// Public
-router.get("/blogs", cmsController.listBlogs);
+// Public with optional authentication - authenticated admins see all blogs, others see only published
+router.get("/blogs", optionalAuth, cmsController.listBlogs);
 router.get("/blogs/:identifier", cmsController.getBlogByIdOrSlug);
 
 // Admin only
@@ -62,6 +84,15 @@ router.delete(
   authenticate,
   authorize("Admin", "Sub Admin"),
   cmsController.deleteBlog,
+);
+
+// Blog Image Upload
+router.post(
+  "/blogs/upload-image",
+  authenticate,
+  authorize("Admin", "Sub Admin"),
+  uploadImage,
+  cmsController.uploadBlogImage,
 );
 
 // ===== FAQs =====
