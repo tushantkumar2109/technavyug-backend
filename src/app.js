@@ -19,6 +19,7 @@ import cmsRoutes from "./routes/cms.route.js";
 import notificationRoutes from "./routes/notification.route.js";
 import ticketRoutes from "./routes/ticket.route.js";
 import contactRoutes from "./routes/contact.route.js";
+import studentRoutes from "./routes/student.route.js";
 
 const app = express();
 
@@ -72,6 +73,7 @@ app.use("/api/v1/cms", cmsRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/tickets", ticketRoutes);
 app.use("/api/v1/contact", contactRoutes);
+app.use("/api/v1/student", studentRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -54,6 +54,22 @@ const User = sequelize.define("User", {
     type: DataTypes.DATE,
     allowNull: true,
   },
+  currentStreak: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: "Consecutive study days",
+  },
+  longestStreak: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: "Best streak ever achieved",
+  },
+  lastStudyDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    comment:
+      "Last date the student completed a lecture (IST, day starts at 6 AM)",
+  },
 });
 
 export default User;
