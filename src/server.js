@@ -13,7 +13,7 @@ sequelize
   .then(() => {
     Logger.info("Connected to MySQL Database");
 
-    const server = app.listen(PORT, () => {
+    const server = app.listen(PORT, 'localhost', () => {
       Logger.info(`Server running on port ${PORT}`);
     });
     // Increased timeout for large video uploads (10 minutes)

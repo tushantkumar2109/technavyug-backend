@@ -3,6 +3,7 @@ import { body } from "express-validator";
 import productController from "../controllers/product.controller.js";
 import { authenticate, authorize } from "../middlewares/auth.middleware.js";
 import validate from "../middlewares/validate.middleware.js";
+import { uploadImage } from "../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
@@ -11,6 +12,14 @@ router.get("/", productController.listProducts);
 router.get("/:identifier", productController.getProductById);
 
 // Admin only
+router.post(
+  "/upload-image",
+  authenticate,
+  authorize("Admin", "Sub Admin"),
+  uploadImage,
+  productController.uploadProductImage
+);
+
 router.post(
   "/",
   authenticate,
