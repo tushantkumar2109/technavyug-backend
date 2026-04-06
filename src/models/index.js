@@ -19,6 +19,7 @@ import Faq from "./faq.model.js";
 import Notification from "./notification.model.js";
 import Ticket from "./ticket.model.js";
 import TicketReply from "./ticketReply.model.js";
+import MonthlyGoal from "./monthlyGoal.model.js";
 
 // ===== Auth Relationships =====
 User.hasMany(RefreshToken, { foreignKey: "userId", onDelete: "CASCADE" });
@@ -125,6 +126,10 @@ TicketReply.belongsTo(Ticket, { foreignKey: "ticketId" });
 User.hasMany(TicketReply, { foreignKey: "userId", onDelete: "CASCADE" });
 TicketReply.belongsTo(User, { foreignKey: "userId" });
 
+// ===== Monthly Goal Relationships =====
+User.hasMany(MonthlyGoal, { foreignKey: "userId", onDelete: "CASCADE" });
+MonthlyGoal.belongsTo(User, { foreignKey: "userId" });
+
 export {
   sequelize,
   User,
@@ -147,4 +152,5 @@ export {
   Notification,
   Ticket,
   TicketReply,
+  MonthlyGoal,
 };

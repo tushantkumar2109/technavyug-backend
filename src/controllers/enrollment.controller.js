@@ -6,6 +6,7 @@ import {
   Lecture,
   User,
   Category,
+  MonthlyGoal,
 } from "../models/index.js";
 import { getPagination, getPaginatedResponse } from "../utils/pagination.js";
 import Logger from "../utils/logger.js";
@@ -206,6 +207,66 @@ const markLectureComplete = async (req, res) => {
       enrollment.completedAt = new Date();
     }
     await enrollment.save();
+
+    // --- Streak tracking (IST, day boundary at 6 AM) ---
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (user) {
+        // Get current IST date with 6 AM boundary
+        const now = new Date();
+        const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+        const istNow = new Date(now.getTime() + istOffset);
+        // Subtract 6 hours so the "day" starts at 6 AM IST
+        const adjusted = new Date(istNow.getTime() - 6 * 60 * 60 * 1000);
+        const todayStr = adjusted.toISOString().split("T")[0];
+
+        const lastStudy = user.lastStudyDate;
+
+        if (lastStudy !== todayStr) {
+          if (lastStudy) {
+            // Calculate yesterday in same 6AM-boundary terms
+            const adjustedYesterday = new Date(adjusted);
+            adjustedYesterday.setDate(adjustedYesterday.getDate() - 1);
+            const yesterdayStr = adjustedYesterday.toISOString().split("T")[0];
+
+            if (lastStudy === yesterdayStr) {
+              user.currentStreak += 1;
+            } else {
+              user.currentStreak = 1;
+            }
+          } else {
+            user.currentStreak = 1;
+          }
+
+          if (user.currentStreak > user.longestStreak) {
+            user.longestStreak = user.currentStreak;
+          }
+          user.lastStudyDate = todayStr;
+          await user.save();
+        }
+
+        // --- Monthly goal progress ---
+        const currentMonth = istNow.getMonth() + 1;
+        const currentYear = istNow.getFullYear();
+        const activeGoal = await MonthlyGoal.findOne({
+          where: {
+            userId: req.user.id,
+            month: currentMonth,
+            year: currentYear,
+            status: "Active",
+          },
+        });
+        if (activeGoal) {
+          activeGoal.completedLectures += 1;
+          if (activeGoal.completedLectures >= activeGoal.targetLectures) {
+            activeGoal.status = "Completed";
+          }
+          await activeGoal.save();
+        }
+      }
+    } catch (streakError) {
+      Logger.error("Error updating streak/goal", streakError);
+    }
 
     res.status(200).json({
       message: "Lecture marked as complete",
