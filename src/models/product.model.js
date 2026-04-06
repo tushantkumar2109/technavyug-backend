@@ -30,7 +30,7 @@ const Product = sequelize.define("Product", {
     comment: "Original price before discount",
   },
   type: {
-    type: DataTypes.ENUM("Physical", "Digital"),
+    type: DataTypes.ENUM("Physical", "Digital", "Service"),
     defaultValue: "Physical",
   },
   stock: {
