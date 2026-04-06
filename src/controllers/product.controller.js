@@ -3,6 +3,7 @@ import { Product } from "../models/index.js";
 import { getPagination, getPaginatedResponse } from "../utils/pagination.js";
 import slugify from "../utils/slugify.js";
 import Logger from "../utils/logger.js";
+import { uploadToCloudinary } from "../middlewares/upload.middleware.js";
 
 const createProduct = async (req, res) => {
   try {
@@ -152,10 +153,34 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+const uploadProductImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No image file provided" });
+    }
+
+    const { url } = await uploadToCloudinary(
+      req.file.buffer,
+      "product-images",
+      "image"
+    );
+
+    Logger.info("Product image uploaded", { fileName: req.file.originalname });
+    res.status(200).json({
+      message: "Image uploaded successfully",
+      data: { url },
+    });
+  } catch (error) {
+    Logger.error("Error uploading product image", error);
+    res.status(500).json({ message: "Failed to upload image" });
+  }
+};
+
 export default {
   createProduct,
   listProducts,
   getProductById,
   updateProduct,
   deleteProduct,
+  uploadProductImage,
 };
