@@ -1,0 +1,9 @@
+process.env.JWT_SECRET = process.env.JWT_SECRET || "test-jwt-secret";
+process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "test-jwt-refresh-secret";
+process.env.SMTP_HOST = process.env.SMTP_HOST || "smtp.example.com";
+process.env.SMTP_PORT = process.env.SMTP_PORT || "587";
+process.env.SMTP_USER = process.env.SMTP_USER || "test@example.com";
+process.env.SMTP_PASS = process.env.SMTP_PASS || "test-pass";
+process.env.SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL || "test@example.com";
+process.env.FRONTEND_URL_1 = process.env.FRONTEND_URL_1 || "http://localhost:3000";
+process.env.BASE_URL = process.env.BASE_URL || "http://localhost:8080";
