@@ -138,7 +138,9 @@ const listBlogs = async (req, res) => {
       limit,
     });
 
-    const { count, rows } = await Blog.findAndCountAll({
+    const count = await Blog.count({ where });
+
+    const rows = await Blog.findAll({
       where,
       include: [
         { model: User, as: "author", attributes: ["id", "name", "avatar"] },
