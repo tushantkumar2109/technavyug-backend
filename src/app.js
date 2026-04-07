@@ -23,13 +23,19 @@ import studentRoutes from "./routes/student.route.js";
 
 const app = express();
 
+// Trust proxy for rate-limiter when behind a reverse proxy
+app.set("trust proxy", 1);
+
 // Security middleware
 app.use(helmet());
 
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: [
+      process.env.FRONTEND_URL_1,
+      process.env.FRONTEND_URL_2,
+    ].filter(Boolean),
     credentials: true,
   }),
 );
