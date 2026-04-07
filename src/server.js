@@ -7,23 +7,23 @@ import { startReminderScheduler } from "./services/reminderScheduler.js";
 
 const PORT = process.env.PORT || 5000;
 
-// Connect to MySQL and sync models (tables)
-sequelize
-  .sync({ alter: true })
-  .then(() => {
+const startServer = async () => {
+  try {
+    await sequelize.authenticate();
     Logger.info("Connected to MySQL Database");
 
-    const server = app.listen(PORT, 'localhost', () => {
+    const server = app.listen(PORT, "0.0.0.0", () => {
       Logger.info(`Server running on port ${PORT}`);
     });
-    // Increased timeout for large video uploads (10 minutes)
+
     server.timeout = 600000;
     server.keepAliveTimeout = 65000;
 
-    // Start email reminder scheduler (streak + goal reminders)
     startReminderScheduler();
-  })
-  .catch((err) => {
+  } catch (err) {
     Logger.error("Database connection failed:", err);
     process.exit(1);
-  });
+  }
+};
+
+startServer();
