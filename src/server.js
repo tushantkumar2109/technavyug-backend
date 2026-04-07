@@ -10,7 +10,6 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     await sequelize.authenticate();
-    await sequelize.sync();
     Logger.info("Connected to MySQL Database");
 
     const server = app.listen(PORT, "0.0.0.0", () => {
