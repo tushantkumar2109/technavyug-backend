@@ -14,6 +14,12 @@ const startServer = async () => {
 
     const server = app.listen(PORT, "0.0.0.0", () => {
       Logger.info(`Server running on port ${PORT}`);
+
+      // We safely use alter: true here because the server is already online and won't crash.
+      sequelize
+        .sync({ alter: true })
+        .then(() => Logger.info("Database synced successfully automatically."))
+        .catch((err) => Logger.error("Automatic database sync failed:", err));
     });
 
     server.timeout = 600000;

@@ -35,7 +35,10 @@ app.use(
     origin: [
       process.env.FRONTEND_URL_1,
       process.env.FRONTEND_URL_2,
-    ].filter(Boolean),
+      process.env.FRONTEND_URL_3,
+    ]
+      .filter(Boolean)
+      .map((url) => url.trim()),
     credentials: true,
   }),
 );

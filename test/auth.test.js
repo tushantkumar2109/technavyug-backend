@@ -78,7 +78,7 @@ describe("Authentication API Endpoints", () => {
         password: "password123",
       });
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(409);
       expect(response.body.message).toBe("User already exists");
     });
 
