@@ -46,7 +46,10 @@ const register = async (req, res) => {
       expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const frontendUrl =
+      process.env.FRONTEND_URL_1 ||
+      process.env.FRONTEND_URL_2 ||
+      "http://localhost:5173";
     const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
     try {
       await sendEmail(
@@ -271,7 +274,7 @@ const forgotPassword = async (req, res) => {
       expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     });
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    const resetUrl = `${process.env.FRONTEND_URL_1 || process.env.FRONTEND_URL_2 || "http://localhost:5173"}/reset-password?token=${token}`;
     try {
       await sendEmail(
         user.email,

@@ -55,7 +55,8 @@ jobs:
           NODE_ENV: ${{ secrets.NODE_ENV }}
           PORT: ${{ secrets.PORT }}
           BASE_URL: ${{ secrets.BASE_URL }}
-          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          FRONTEND_URL_1: ${{ secrets.FRONTEND_URL_1 }}
+          FRONTEND_URL_2: ${{ secrets.FRONTEND_URL_2 }}
           DB_HOST: 127.0.0.1
           DB_USER: root
           DB_PASS: testpassword

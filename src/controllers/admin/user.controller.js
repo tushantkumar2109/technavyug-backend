@@ -94,7 +94,7 @@ const updateUser = async (req, res) => {
           </div>
           <p>If you believe this was a mistake or have any questions regarding your account status, please reach out to our support team immediately.</p>
           <div style="text-align: center; margin-top: 30px;">
-            <a href="${process.env.FRONTEND_URL || "https://technavyug.com"}" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Visit Website</a>
+            <a href="${process.env.FRONTEND_URL_1 || process.env.FRONTEND_URL_2 || "https://technavyug.com"}" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Visit Website</a>
           </div>
           <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0 20px 0;" />
           <p style="font-size: 11px; color: #94a3b8; text-align: center;">
