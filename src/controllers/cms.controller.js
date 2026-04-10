@@ -1,90 +1,9 @@
 import { Op } from "sequelize";
-import { HomepageContent, Blog, Faq, User } from "../models/index.js";
+import { Blog, Faq, User } from "../models/index.js";
 import { getPagination, getPaginatedResponse } from "../utils/pagination.js";
 import slugify from "../utils/slugify.js";
 import Logger from "../utils/logger.js";
 import { uploadToCloudinary } from "../middlewares/upload.middleware.js";
-
-const createHomepageContent = async (req, res) => {
-  try {
-    const content = await HomepageContent.create(req.body);
-    Logger.info("Homepage content created", { id: content.id });
-    res
-      .status(201)
-      .json({ message: "Content created successfully", data: content });
-  } catch (error) {
-    Logger.error("Error creating homepage content", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-const listHomepageContent = async (req, res) => {
-  try {
-    const { section } = req.query;
-    const where = { isActive: true };
-    if (section) where.section = section;
-
-    const content = await HomepageContent.findAll({
-      where,
-      order: [["order", "ASC"]],
-    });
-
-    res.status(200).json({ data: content });
-  } catch (error) {
-    Logger.error("Error listing homepage content", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-const updateHomepageContent = async (req, res) => {
-  try {
-    const content = await HomepageContent.findByPk(req.params.id);
-    if (!content) {
-      return res.status(404).json({ message: "Content not found" });
-    }
-
-    const fields = [
-      "section",
-      "title",
-      "subtitle",
-      "content",
-      "image",
-      "buttonText",
-      "buttonLink",
-      "order",
-      "isActive",
-      "metadata",
-    ];
-    for (const field of fields) {
-      if (req.body[field] !== undefined) content[field] = req.body[field];
-    }
-
-    await content.save();
-    Logger.info("Homepage content updated", { id: content.id });
-    res
-      .status(200)
-      .json({ message: "Content updated successfully", data: content });
-  } catch (error) {
-    Logger.error("Error updating homepage content", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-const deleteHomepageContent = async (req, res) => {
-  try {
-    const content = await HomepageContent.findByPk(req.params.id);
-    if (!content) {
-      return res.status(404).json({ message: "Content not found" });
-    }
-
-    await content.destroy();
-    Logger.info("Homepage content deleted", { id: req.params.id });
-    res.status(200).json({ message: "Content deleted successfully" });
-  } catch (error) {
-    Logger.error("Error deleting homepage content", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
 
 const createBlog = async (req, res) => {
   try {
@@ -138,9 +57,7 @@ const listBlogs = async (req, res) => {
       limit,
     });
 
-    const count = await Blog.count({ where });
-
-    const rows = await Blog.findAll({
+    const { count, rows } = await Blog.findAndCountAll({
       where,
       include: [
         { model: User, as: "author", attributes: ["id", "name", "avatar"] },
@@ -329,10 +246,6 @@ const uploadBlogImage = async (req, res) => {
 };
 
 export default {
-  createHomepageContent,
-  listHomepageContent,
-  updateHomepageContent,
-  deleteHomepageContent,
   createBlog,
   listBlogs,
   getBlogByIdOrSlug,
