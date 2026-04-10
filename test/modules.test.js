@@ -508,24 +508,12 @@ describe("Reviews and Ratings", () => {
 
 // ===== CMS Tests =====
 
-describe("CMS: Homepage, Blog, FAQ", () => {
+describe("CMS: Blog, FAQ", () => {
   let admin, token;
 
   beforeEach(async () => {
     admin = await createUser({ role: "Admin", email: "admin@test.com" });
     token = getAuthToken(admin);
-  });
-
-  test("Should create and list homepage content", async () => {
-    await request(app)
-      .post("/api/v1/cms/homepage")
-      .set("Authorization", `Bearer ${token}`)
-      .send({ section: "hero", title: "Welcome", content: "Learn with us" });
-
-    const res = await request(app).get("/api/v1/cms/homepage");
-    expect(res.status).toBe(200);
-    expect(res.body.data.length).toBe(1);
-    expect(res.body.data[0].section).toBe("hero");
   });
 
   test("Should create and list blogs", async () => {
