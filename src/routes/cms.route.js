@@ -28,33 +28,6 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
-// ===== Homepage Content =====
-// Public
-router.get("/homepage", cmsController.listHomepageContent);
-
-// Admin only
-router.post(
-  "/homepage",
-  authenticate,
-  authorize("Admin", "Sub Admin"),
-  body("section").notEmpty().withMessage("Section identifier is required"),
-  validate,
-  cmsController.createHomepageContent,
-);
-
-router.put(
-  "/homepage/:id",
-  authenticate,
-  authorize("Admin", "Sub Admin"),
-  cmsController.updateHomepageContent,
-);
-
-router.delete(
-  "/homepage/:id",
-  authenticate,
-  authorize("Admin", "Sub Admin"),
-  cmsController.deleteHomepageContent,
-);
 
 // ===== Blogs =====
 // Public with optional authentication - authenticated admins see all blogs, others see only published
