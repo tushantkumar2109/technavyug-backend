@@ -147,6 +147,13 @@ const login = async (req, res) => {
         .json({ message: "Email or password is incorrect" });
     }
 
+    if (user.emailVerified == 0) {
+      Logger.warn("Login attempt with unverified email", { email });
+      return res
+        .status(401)
+        .json({ message: "Please verify your email before logging in" });
+    }
+
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user, rememberMe);
 
