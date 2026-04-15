@@ -106,6 +106,7 @@ describe("Authentication API Endpoints", () => {
         name: "Login User",
         email: "login@example.com",
         password: hashedPassword,
+        emailVerified: true,
       });
     });
 
