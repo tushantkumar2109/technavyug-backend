@@ -71,6 +71,59 @@ const register = async (req, res) => {
   }
 };
 
+const resendVerificationEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      Logger.warn("Resend verification requested for non-existent email", {
+        email,
+      });
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({ message: "Email is already verified" });
+    }
+
+    // Delete any existing verification tokens for this user
+    await VerificationToken.destroy({
+      where: { userId: user.id, type: "VERIFY_EMAIL" },
+    });
+
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    await VerificationToken.create({
+      userId: user.id,
+      token: verificationToken,
+      type: "VERIFY_EMAIL",
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    });
+
+    const frontendUrl =
+      process.env.FRONTEND_URL_1 ||
+      process.env.FRONTEND_URL_2 ||
+      "http://localhost:5173";
+    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
+
+    await sendEmail(
+      user.email,
+      "Verify your email",
+      verificationEmailTemplate(user.name, verificationUrl),
+    );
+
+    Logger.info("Verification email resent successfully", { userId: user.id });
+    res.status(200).json({ message: "Verification email sent successfully" });
+  } catch (error) {
+    Logger.error("Error during resending verification email", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 const verifyEmail = async (req, res) => {
   try {
     const token = req.query.token;
@@ -461,4 +514,5 @@ export default {
   updateProfile,
   changePassword,
   deleteAccount,
+  resendVerificationEmail,
 };

@@ -10,6 +10,8 @@ import {
 } from "../models/index.js";
 import { getPagination, getPaginatedResponse } from "../utils/pagination.js";
 import Logger from "../utils/logger.js";
+import sendEmail from "../services/email.service.js";
+import enrollmentSuccessTemplate from "../templates/email/enrollmentSuccess.template.js";
 
 const enrollInCourse = async (req, res) => {
   try {
@@ -24,6 +26,14 @@ const enrollInCourse = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Course is not available for enrollment" });
+    }
+
+    // Check if the course is free
+    if (parseFloat(course.price) > 0) {
+      return res.status(400).json({
+        message:
+          "This is a paid course. Please complete the purchase to enroll.",
+      });
     }
 
     const existing = await Enrollment.findOne({
@@ -63,6 +73,26 @@ const enrollInCourse = async (req, res) => {
     res
       .status(201)
       .json({ message: "Enrolled successfully", data: enrollment });
+
+    // Send confirmation email asynchronously
+    (async () => {
+      try {
+        const user = await User.findByPk(req.user.id);
+        const frontendUrl =
+          process.env.FRONTEND_URL_1 ||
+          process.env.FRONTEND_URL_2 ||
+          "http://localhost:5173";
+        const myLearningUrl = `${frontendUrl}/student/courses`;
+
+        await sendEmail(
+          user.email,
+          `Successfully Enrolled: ${course.title}`,
+          enrollmentSuccessTemplate(user.name, course.title, myLearningUrl),
+        );
+      } catch (emailError) {
+        Logger.error("Failed to send enrollment confirmation email", emailError);
+      }
+    })();
   } catch (error) {
     Logger.error("Error enrolling in course", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -322,6 +352,10 @@ const getCourseProgress = async (req, res) => {
       lectures: section.lectures.map((lecture) => ({
         lectureId: lecture.id,
         title: lecture.title,
+        type: lecture.type,
+        videoUrl: lecture.videoUrl,
+        content: lecture.content,
+        duration: lecture.duration,
         completed: lecture.LectureProgresses?.[0]?.completed || false,
         completedAt: lecture.LectureProgresses?.[0]?.completedAt || null,
       })),
