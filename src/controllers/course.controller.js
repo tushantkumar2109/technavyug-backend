@@ -431,6 +431,32 @@ const createLecture = async (req, res) => {
         videoUrl = result.url;
         videoPublicId = result.publicId;
         if (result.duration) duration = result.duration;
+      } catch (uploadError) {
+        // Always cleanup the local file on failure
+        await cleanupFile(req.file.path);
+
+        // Return a user-friendly error based on the Cloudinary error
+        const httpCode = uploadError?.http_code || uploadError?.statusCode;
+        if (httpCode === 413) {
+          return res.status(413).json({
+            message:
+              "Video file is too large for upload. Please try a smaller or more compressed video.",
+          });
+        }
+        if (
+          uploadError?.message?.includes("timeout") ||
+          uploadError?.code === "ETIMEDOUT"
+        ) {
+          return res.status(408).json({
+            message:
+              "Video upload timed out. Please check your internet connection and try again.",
+          });
+        }
+
+        Logger.error("Error uploading video to Cloudinary", uploadError);
+        return res.status(500).json({
+          message: "Failed to upload video. Please try again later.",
+        });
       } finally {
         // Always cleanup the local file
         await cleanupFile(req.file.path);

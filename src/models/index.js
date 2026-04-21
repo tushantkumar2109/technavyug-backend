@@ -21,14 +21,14 @@ import Ticket from "./ticket.model.js";
 import TicketReply from "./ticketReply.model.js";
 import MonthlyGoal from "./monthlyGoal.model.js";
 
-// ===== Auth Relationships =====
+// Auth Relationships
 User.hasMany(RefreshToken, { foreignKey: "userId", onDelete: "CASCADE" });
 RefreshToken.belongsTo(User, { foreignKey: "userId" });
 
 User.hasMany(VerificationToken, { foreignKey: "userId", onDelete: "CASCADE" });
 VerificationToken.belongsTo(User, { foreignKey: "userId" });
 
-// ===== Course Relationships =====
+// Course Relationships
 Category.hasMany(Course, { foreignKey: "categoryId", onDelete: "SET NULL" });
 Course.belongsTo(Category, { foreignKey: "categoryId" });
 
@@ -53,7 +53,7 @@ Section.hasMany(Lecture, {
 });
 Lecture.belongsTo(Section, { foreignKey: "sectionId" });
 
-// ===== Enrollment Relationships =====
+// Enrollment Relationships
 User.hasMany(Enrollment, { foreignKey: "userId", onDelete: "CASCADE" });
 Enrollment.belongsTo(User, { foreignKey: "userId" });
 
@@ -69,7 +69,7 @@ Lecture.hasMany(LectureProgress, {
 });
 LectureProgress.belongsTo(Lecture, { foreignKey: "lectureId" });
 
-// ===== E-Commerce Relationships =====
+// E-Commerce Relationships
 User.hasMany(Order, { foreignKey: "userId", onDelete: "CASCADE" });
 Order.belongsTo(User, { foreignKey: "userId" });
 
@@ -89,7 +89,7 @@ Payment.belongsTo(Order, { foreignKey: "orderId" });
 User.hasMany(Payment, { foreignKey: "userId", onDelete: "CASCADE" });
 Payment.belongsTo(User, { foreignKey: "userId" });
 
-// ===== Review Relationships =====
+// Review Relationships
 User.hasMany(Review, { foreignKey: "userId", onDelete: "CASCADE" });
 Review.belongsTo(User, { foreignKey: "userId" });
 
@@ -100,7 +100,7 @@ Course.hasMany(Review, {
 });
 Review.belongsTo(Course, { foreignKey: "courseId" });
 
-// ===== Blog Relationships =====
+// Blog Relationships
 User.hasMany(Blog, {
   foreignKey: "authorId",
   as: "blogs",
@@ -108,11 +108,11 @@ User.hasMany(Blog, {
 });
 Blog.belongsTo(User, { foreignKey: "authorId", as: "author" });
 
-// ===== Notification Relationships =====
+// Notification Relationships
 User.hasMany(Notification, { foreignKey: "userId", onDelete: "CASCADE" });
 Notification.belongsTo(User, { foreignKey: "userId" });
 
-// ===== Ticket Relationships =====
+// Ticket Relationships
 User.hasMany(Ticket, { foreignKey: "userId", onDelete: "CASCADE" });
 Ticket.belongsTo(User, { foreignKey: "userId" });
 
@@ -126,7 +126,7 @@ TicketReply.belongsTo(Ticket, { foreignKey: "ticketId" });
 User.hasMany(TicketReply, { foreignKey: "userId", onDelete: "CASCADE" });
 TicketReply.belongsTo(User, { foreignKey: "userId" });
 
-// ===== Monthly Goal Relationships =====
+// Monthly Goal Relationships
 User.hasMany(MonthlyGoal, { foreignKey: "userId", onDelete: "CASCADE" });
 MonthlyGoal.belongsTo(User, { foreignKey: "userId" });
 

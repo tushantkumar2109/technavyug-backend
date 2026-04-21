@@ -17,7 +17,7 @@ router.post(
   authenticate,
   authorize("Admin", "Sub Admin"),
   uploadImage,
-  productController.uploadProductImage
+  productController.uploadProductImage,
 );
 
 router.post(

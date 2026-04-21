@@ -28,8 +28,7 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
-
-// ===== Blogs =====
+// Blogs
 // Public with optional authentication - authenticated admins see all blogs, others see only published
 router.get("/blogs", optionalAuth, cmsController.listBlogs);
 router.get("/blogs/:identifier", cmsController.getBlogByIdOrSlug);
@@ -68,7 +67,7 @@ router.post(
   cmsController.uploadBlogImage,
 );
 
-// ===== FAQs =====
+// FAQs
 // Public
 router.get("/faqs", cmsController.listFaqs);
 

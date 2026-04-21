@@ -1,9 +1,6 @@
 import jwt from "jsonwebtoken";
 import { User } from "../models/index.js";
 
-/**
- * Verify JWT from Authorization header and attach user to request.
- */
 const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -39,10 +36,6 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-/**
- * Role-based authorization middleware.
- * Usage: authorize("Admin", "Sub Admin")
- */
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {

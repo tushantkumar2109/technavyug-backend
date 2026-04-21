@@ -14,7 +14,10 @@ router.post(
   body("password")
     .isLength({ min: 6 })
     .withMessage("Password must be at least 6 characters"),
-  body("role").optional().isIn(["Student", "Instructor"]).withMessage("Invalid role"),
+  body("role")
+    .optional()
+    .isIn(["Student", "Instructor"])
+    .withMessage("Invalid role"),
   validate,
   authController.register,
 );

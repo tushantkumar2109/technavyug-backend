@@ -24,8 +24,14 @@ const storage = multer.diskStorage({
 });
 
 const videoFileFilter = (req, file, cb) => {
-  const allowedTypes = ["video/mp4", "video/webm", "video/quicktime"];
-  if (allowedTypes.includes(file.mimetype)) {
+  const allowedMimeTypes = ["video/mp4", "video/webm", "video/quicktime"];
+  const allowedExtensions = [".mp4", ".webm", ".mov"];
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  if (
+    allowedMimeTypes.includes(file.mimetype) ||
+    allowedExtensions.includes(ext)
+  ) {
     cb(null, true);
   } else {
     cb(
@@ -144,4 +150,38 @@ export const cleanupFile = async (filePath) => {
   } catch (error) {
     console.error(`Cleanup failed for ${filePath}:`, error);
   }
+};
+
+/**
+ * Middleware to handle multer errors gracefully.
+ * Place this AFTER the multer middleware in the route chain.
+ */
+export const handleMulterError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    // Multer-specific errors
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        message: "File is too large. Please upload a smaller file.",
+      });
+    }
+    if (err.code === "LIMIT_UNEXPECTED_FILE") {
+      return res.status(400).json({
+        message: "Unexpected file field. Please check your upload.",
+      });
+    }
+    return res.status(400).json({
+      message: `Upload error: ${err.message}`,
+    });
+  }
+
+  if (err) {
+    // Custom errors from file filter callbacks
+    if (err.message && err.message.includes("Invalid file type")) {
+      return res.status(400).json({ message: err.message });
+    }
+    // Pass other errors to the next error handler
+    return next(err);
+  }
+
+  next();
 };
