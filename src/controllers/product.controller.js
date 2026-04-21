@@ -162,7 +162,7 @@ const uploadProductImage = async (req, res) => {
     const { url } = await uploadToCloudinary(
       req.file.buffer,
       "product-images",
-      "image"
+      "image",
     );
 
     Logger.info("Product image uploaded", { fileName: req.file.originalname });

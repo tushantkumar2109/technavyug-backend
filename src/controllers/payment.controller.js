@@ -1,11 +1,6 @@
 import { Order, Payment } from "../models/index.js";
 import Logger from "../utils/logger.js";
 
-/**
- * Payment controller with Stripe and Razorpay integration stubs.
- * Actual gateway API calls require valid API keys in environment variables.
- */
-
 const initiatePayment = async (req, res) => {
   try {
     const { orderId, gateway } = req.body;
@@ -43,11 +38,6 @@ const initiatePayment = async (req, res) => {
     let gatewayResponse = {};
 
     if (gateway === "Razorpay") {
-      // Razorpay integration stub
-      // In production, use:
-      // const Razorpay = require("razorpay");
-      // const instance = new Razorpay({ key_id, key_secret });
-      // const razorpayOrder = await instance.orders.create({ amount, currency, receipt });
       gatewayResponse = {
         provider: "Razorpay",
         message:
@@ -57,10 +47,6 @@ const initiatePayment = async (req, res) => {
         currency: payment.currency,
       };
     } else if (gateway === "Stripe") {
-      // Stripe integration stub
-      // In production, use:
-      // const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-      // const paymentIntent = await stripe.paymentIntents.create({ amount, currency });
       gatewayResponse = {
         provider: "Stripe",
         message:
@@ -97,10 +83,6 @@ const confirmPayment = async (req, res) => {
     if (payment.userId !== req.user.id) {
       return res.status(403).json({ message: "Not authorized" });
     }
-
-    // In production, verify the payment with the gateway here
-    // For Razorpay: verify signature using razorpay_order_id, razorpay_payment_id, razorpay_signature
-    // For Stripe: verify the payment intent status
 
     payment.gatewayPaymentId = gatewayPaymentId;
     payment.gatewayOrderId = gatewayOrderId;

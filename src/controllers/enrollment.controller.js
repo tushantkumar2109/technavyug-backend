@@ -90,7 +90,10 @@ const enrollInCourse = async (req, res) => {
           enrollmentSuccessTemplate(user.name, course.title, myLearningUrl),
         );
       } catch (emailError) {
-        Logger.error("Failed to send enrollment confirmation email", emailError);
+        Logger.error(
+          "Failed to send enrollment confirmation email",
+          emailError,
+        );
       }
     })();
   } catch (error) {
@@ -211,19 +214,24 @@ const markLectureComplete = async (req, res) => {
       await progress.save();
     }
 
-    // Calculate course completion percentage
-    const totalLectures = await Lecture.count({
-      include: [{ model: Section, where: { courseId } }],
+    // Calculate course completion percentage safely
+    // 1. Get all lecture IDs for this exact course
+    const courseLectures = await Lecture.findAll({
+      attributes: ["id"],
+      include: [{ model: Section, where: { courseId }, attributes: [] }],
+      raw: true,
     });
 
+    const lectureIds = courseLectures.map((l) => l.id);
+    const totalLectures = lectureIds.length;
+
+    // 2. Count ONLY progress records matching those exact lecture IDs
     const completedLectures = await LectureProgress.count({
-      where: { userId: req.user.id, completed: true },
-      include: [
-        {
-          model: Lecture,
-          include: [{ model: Section, where: { courseId } }],
-        },
-      ],
+      where: {
+        userId: req.user.id,
+        completed: true,
+        lectureId: lectureIds,
+      },
     });
 
     const completionPercent =

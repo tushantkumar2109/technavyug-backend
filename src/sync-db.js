@@ -8,9 +8,6 @@ const syncDB = async () => {
     await sequelize.authenticate();
     Logger.info("Connected to Database.");
 
-    // Instead of forcing or blindly syncing, we use alter: true
-    // to match the database tables with models without dropping existing data.
-    // In production, migrations are usually preferred, but for a safe controlled sync:
     await sequelize.sync({ alter: true });
 
     Logger.info("Database synchronized successfully.");
