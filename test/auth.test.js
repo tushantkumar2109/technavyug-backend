@@ -270,7 +270,7 @@ describe("Authentication API Endpoints", () => {
   });
 
   // Email Verification Flow Tests
-  describe("POST /api/v1/auth/verify-email", () => {
+ describe("POST /api/v1/auth/verify-email", () => {
     let testUser;
     let validToken;
 
@@ -315,15 +315,15 @@ describe("Authentication API Endpoints", () => {
 
     test("Should fail with an invalid or expired token", async () => {
       const response = await request(app)
-        .get("/api/v1/auth/verify-email")
-        .query({ token: "some-fake-invalid-token" });
+        .post("/api/v1/auth/verify-email")
+        .send({ token: "some-fake-invalid-token" });
 
       expect(response.status).toBe(400);
       expect(response.body.message).toBe("Invalid or expired token");
     });
 
     test("Should fail if token is missing entirely", async () => {
-      const response = await request(app).get("/api/v1/auth/verify-email"); // No query parameters
+      const response = await request(app).post("/api/v1/auth/verify-email"); // No query parameters
 
       expect(response.status).toBe(400);
       expect(response.body.message).toBe("Verification token is required");
