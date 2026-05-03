@@ -270,7 +270,7 @@ describe("Authentication API Endpoints", () => {
   });
 
   // Email Verification Flow Tests
-  describe("GET /api/v1/auth/verify-email", () => {
+  describe("POST /api/v1/auth/verify-email", () => {
     let testUser;
     let validToken;
 
@@ -296,8 +296,8 @@ describe("Authentication API Endpoints", () => {
 
     test("Should successfully verify account with a valid token", async () => {
       const response = await request(app)
-        .get("/api/v1/auth/verify-email")
-        .query({ token: validToken });
+        .post("/api/v1/auth/verify-email")
+        .send({ token: validToken });
 
       expect(response.status).toBe(200);
       expect(response.body.message).toBe("Email verified successfully");
