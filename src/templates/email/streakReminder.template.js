@@ -17,7 +17,7 @@ const streakReminderTemplate = (name, currentStreak) => {
         Your study day resets at <b>6:00 AM IST</b> tomorrow. Complete at least one lecture before then to keep your streak alive!
       </p>
 
-      <a href="${process.env.FRONTEND_URL_1 || process.env.FRONTEND_URL_2 || "http://localhost:5173"}/student"
+      <a href="${process.env.FRONTEND_URL_1 || process.env.FRONTEND_URL_2}/student"
          style="
            display:inline-block;
            padding:14px 28px;

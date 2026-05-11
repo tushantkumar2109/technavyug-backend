@@ -25,7 +25,7 @@ const sendEmail = async (to, subject, htmlContent) => {
     const mailOptions = {
       from:
         process.env.SMTP_FROM_EMAIL ||
-        '"Support" <noreply@technavyug-admin.com>',
+        '"Technavyug Education" <noreply@technavyug.com>',
       to,
       subject,
       html: htmlContent,
