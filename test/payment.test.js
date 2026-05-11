@@ -18,24 +18,11 @@ import {
   Enrollment,
 } from "../src/models/index.js";
 
-// Mock email and PhonePe services
+import phonepeService from "../src/services/phonepe.service.js";
+
 jest.unstable_mockModule("../src/services/email.service.js", () => ({
   __esModule: true,
   default: jest.fn().mockResolvedValue(true),
-}));
-
-jest.unstable_mockModule("../src/services/phonepe.service.js", () => ({
-  __esModule: true,
-  default: {
-    getClient: jest.fn(),
-    initiatePayment: jest.fn().mockResolvedValue({
-      redirectUrl: "https://phonepe.com/pay/test-checkout-url",
-    }),
-    getPaymentStatus: jest.fn().mockResolvedValue({
-      state: "COMPLETED",
-      transactionId: "PP_TXN_123",
-    }),
-  },
 }));
 
 jest.setTimeout(15000);
@@ -45,6 +32,13 @@ let authToken;
 
 beforeAll(async () => {
   await sequelize.authenticate();
+  jest.spyOn(phonepeService, "initiatePayment").mockResolvedValue({
+    redirectUrl: "https://phonepe.com/pay/test-checkout-url",
+  });
+  jest.spyOn(phonepeService, "getPaymentStatus").mockResolvedValue({
+    state: "COMPLETED",
+    transactionId: "PP_TXN_123",
+  });
 });
 
 beforeEach(async () => {
@@ -71,9 +65,8 @@ afterAll(async () => {
   await sequelize.close();
 });
 
-// ============================================================
 // ADDRESS ENDPOINTS
-// ============================================================
+
 describe("Address API (/api/v1/addresses)", () => {
   describe("POST /api/v1/addresses", () => {
     test("Should create a new address", async () => {
@@ -104,9 +97,14 @@ describe("Address API (/api/v1/addresses)", () => {
     });
 
     test("Should fail without auth", async () => {
-      const res = await request(app)
-        .post("/api/v1/addresses")
-        .send({ name: "John", phone: "1234567890", addressLine1: "St", city: "X", state: "Y", pincode: "123456" });
+      const res = await request(app).post("/api/v1/addresses").send({
+        name: "John",
+        phone: "1234567890",
+        addressLine1: "St",
+        city: "X",
+        state: "Y",
+        pincode: "123456",
+      });
 
       expect(res.status).toBe(401);
     });
@@ -115,7 +113,13 @@ describe("Address API (/api/v1/addresses)", () => {
   describe("GET /api/v1/addresses", () => {
     test("Should list user addresses", async () => {
       await Address.create({
-        userId: testUser.id, name: "Home", phone: "111", addressLine1: "Addr", city: "C", state: "S", pincode: "111111",
+        userId: testUser.id,
+        name: "Home",
+        phone: "111",
+        addressLine1: "Addr",
+        city: "C",
+        state: "S",
+        pincode: "111111",
       });
 
       const res = await request(app)
@@ -130,7 +134,13 @@ describe("Address API (/api/v1/addresses)", () => {
   describe("DELETE /api/v1/addresses/:id", () => {
     test("Should delete an address", async () => {
       const addr = await Address.create({
-        userId: testUser.id, name: "Home", phone: "111", addressLine1: "Addr", city: "C", state: "S", pincode: "111111",
+        userId: testUser.id,
+        name: "Home",
+        phone: "111",
+        addressLine1: "Addr",
+        city: "C",
+        state: "S",
+        pincode: "111111",
       });
 
       const res = await request(app)
@@ -143,9 +153,19 @@ describe("Address API (/api/v1/addresses)", () => {
     });
 
     test("Should not delete another user's address", async () => {
-      const otherUser = await User.create({ name: "Other", email: "other@test.com", password: "x" });
+      const otherUser = await User.create({
+        name: "Other",
+        email: "other@test.com",
+        password: "x",
+      });
       const addr = await Address.create({
-        userId: otherUser.id, name: "Other Home", phone: "222", addressLine1: "Addr2", city: "C", state: "S", pincode: "222222",
+        userId: otherUser.id,
+        name: "Other Home",
+        phone: "222",
+        addressLine1: "Addr2",
+        city: "C",
+        state: "S",
+        pincode: "222222",
       });
 
       const res = await request(app)
@@ -159,10 +179,23 @@ describe("Address API (/api/v1/addresses)", () => {
   describe("PATCH /api/v1/addresses/:id/default", () => {
     test("Should set an address as default", async () => {
       const addr1 = await Address.create({
-        userId: testUser.id, name: "A1", phone: "111", addressLine1: "X", city: "C", state: "S", pincode: "111111", isDefault: true,
+        userId: testUser.id,
+        name: "A1",
+        phone: "111",
+        addressLine1: "X",
+        city: "C",
+        state: "S",
+        pincode: "111111",
+        isDefault: true,
       });
       const addr2 = await Address.create({
-        userId: testUser.id, name: "A2", phone: "222", addressLine1: "Y", city: "C", state: "S", pincode: "222222",
+        userId: testUser.id,
+        name: "A2",
+        phone: "222",
+        addressLine1: "Y",
+        city: "C",
+        state: "S",
+        pincode: "222222",
       });
 
       const res = await request(app)
@@ -179,9 +212,8 @@ describe("Address API (/api/v1/addresses)", () => {
   });
 });
 
-// ============================================================
 // COUPON ENDPOINTS
-// ============================================================
+
 describe("Coupon API (/api/v1/coupons)", () => {
   describe("POST /api/v1/coupons/validate", () => {
     test("Should validate a valid coupon", async () => {
@@ -300,7 +332,11 @@ describe("Coupon API (/api/v1/coupons)", () => {
     beforeEach(async () => {
       const adminPw = await bcrypt.hash("admin123", 10);
       await User.create({
-        name: "Admin", email: "admin@test.com", password: adminPw, role: "Admin", emailVerified: true,
+        name: "Admin",
+        email: "admin@test.com",
+        password: adminPw,
+        role: "Admin",
+        emailVerified: true,
       });
       const loginRes = await request(app)
         .post("/api/v1/auth/login")
@@ -338,8 +374,18 @@ describe("Coupon API (/api/v1/coupons)", () => {
     });
 
     test("Should list coupons (admin)", async () => {
-      await Coupon.create({ code: "C1", discountType: "flat", discountValue: 10, expiryDate: "2030-12-31" });
-      await Coupon.create({ code: "C2", discountType: "percentage", discountValue: 20, expiryDate: "2030-12-31" });
+      await Coupon.create({
+        code: "C1",
+        discountType: "flat",
+        discountValue: 10,
+        expiryDate: "2030-12-31",
+      });
+      await Coupon.create({
+        code: "C2",
+        discountType: "percentage",
+        discountValue: 20,
+        expiryDate: "2030-12-31",
+      });
 
       const res = await request(app)
         .get("/api/v1/coupons")
@@ -350,7 +396,12 @@ describe("Coupon API (/api/v1/coupons)", () => {
     });
 
     test("Should delete a coupon (admin)", async () => {
-      const coupon = await Coupon.create({ code: "DEL", discountType: "flat", discountValue: 10, expiryDate: "2030-12-31" });
+      const coupon = await Coupon.create({
+        code: "DEL",
+        discountType: "flat",
+        discountValue: 10,
+        expiryDate: "2030-12-31",
+      });
 
       const res = await request(app)
         .delete(`/api/v1/coupons/${coupon.id}`)
@@ -361,16 +412,24 @@ describe("Coupon API (/api/v1/coupons)", () => {
   });
 });
 
-// ============================================================
 // PHONEPE PAYMENT ENDPOINTS
-// ============================================================
+
 describe("PhonePe Payment API (/api/v1/phonepe)", () => {
   describe("POST /api/v1/phonepe/initiate-course-payment", () => {
     test("Should initiate a course payment", async () => {
-      const instructor = await User.create({ name: "Prof", email: "prof@test.com", password: "x", role: "Instructor" });
+      const instructor = await User.create({
+        name: "Prof",
+        email: "prof@test.com",
+        password: "x",
+        role: "Instructor",
+      });
       const course = await Course.create({
-        title: "Test Course", slug: "test-course", price: 999, status: "Published",
-        instructorId: instructor.id, level: "Beginner",
+        title: "Test Course",
+        slug: "test-course",
+        price: 999,
+        status: "Published",
+        instructorId: instructor.id,
+        level: "Beginner",
       });
 
       const res = await request(app)
@@ -383,17 +442,28 @@ describe("PhonePe Payment API (/api/v1/phonepe)", () => {
       expect(res.body.data.merchantOrderId).toMatch(/^CRS-/);
 
       // Verify transaction was created
-      const txn = await Transaction.findOne({ where: { merchantOrderId: res.body.data.merchantOrderId } });
+      const txn = await Transaction.findOne({
+        where: { merchantOrderId: res.body.data.merchantOrderId },
+      });
       expect(txn).not.toBeNull();
       expect(txn.status).toBe("Pending");
       expect(txn.paymentType).toBe("course");
     });
 
     test("Should reject payment for a free course", async () => {
-      const instructor = await User.create({ name: "Prof", email: "prof@test.com", password: "x", role: "Instructor" });
+      const instructor = await User.create({
+        name: "Prof",
+        email: "prof@test.com",
+        password: "x",
+        role: "Instructor",
+      });
       const course = await Course.create({
-        title: "Free Course", slug: "free-course", price: 0, status: "Published",
-        instructorId: instructor.id, level: "Beginner",
+        title: "Free Course",
+        slug: "free-course",
+        price: 0,
+        status: "Published",
+        instructorId: instructor.id,
+        level: "Beginner",
       });
 
       const res = await request(app)
@@ -405,12 +475,25 @@ describe("PhonePe Payment API (/api/v1/phonepe)", () => {
     });
 
     test("Should reject payment if already enrolled", async () => {
-      const instructor = await User.create({ name: "Prof", email: "prof@test.com", password: "x", role: "Instructor" });
-      const course = await Course.create({
-        title: "Owned Course", slug: "owned-course", price: 500, status: "Published",
-        instructorId: instructor.id, level: "Beginner",
+      const instructor = await User.create({
+        name: "Prof",
+        email: "prof@test.com",
+        password: "x",
+        role: "Instructor",
       });
-      await Enrollment.create({ userId: testUser.id, courseId: course.id, status: "Active" });
+      const course = await Course.create({
+        title: "Owned Course",
+        slug: "owned-course",
+        price: 500,
+        status: "Published",
+        instructorId: instructor.id,
+        level: "Beginner",
+      });
+      await Enrollment.create({
+        userId: testUser.id,
+        courseId: course.id,
+        status: "Active",
+      });
 
       const res = await request(app)
         .post("/api/v1/phonepe/initiate-course-payment")
@@ -425,10 +508,21 @@ describe("PhonePe Payment API (/api/v1/phonepe)", () => {
   describe("POST /api/v1/phonepe/initiate-order-payment", () => {
     test("Should initiate an order payment", async () => {
       const product = await Product.create({
-        name: "Widget", price: 500, stock: 10, type: "Physical", status: "Active",
+        name: "Widget",
+        slug: "widget",
+        price: 500,
+        stock: 10,
+        type: "Physical",
+        status: "Active",
       });
       const address = await Address.create({
-        userId: testUser.id, name: "Home", phone: "111", addressLine1: "St", city: "C", state: "S", pincode: "111111",
+        userId: testUser.id,
+        name: "Home",
+        phone: "111",
+        addressLine1: "St",
+        city: "C",
+        state: "S",
+        pincode: "111111",
       });
 
       const res = await request(app)
@@ -446,7 +540,12 @@ describe("PhonePe Payment API (/api/v1/phonepe)", () => {
 
     test("Should reject order without address", async () => {
       const product = await Product.create({
-        name: "Widget", price: 500, stock: 10, type: "Physical", status: "Active",
+        name: "Widget",
+        slug: "widget-2",
+        price: 500,
+        stock: 10,
+        type: "Physical",
+        status: "Active",
       });
 
       const res = await request(app)
@@ -461,10 +560,21 @@ describe("PhonePe Payment API (/api/v1/phonepe)", () => {
 
     test("Should reject order with insufficient stock", async () => {
       const product = await Product.create({
-        name: "Widget", price: 500, stock: 1, type: "Physical", status: "Active",
+        name: "Widget",
+        slug: "widget-3",
+        price: 500,
+        stock: 1,
+        type: "Physical",
+        status: "Active",
       });
       const address = await Address.create({
-        userId: testUser.id, name: "Home", phone: "111", addressLine1: "St", city: "C", state: "S", pincode: "111111",
+        userId: testUser.id,
+        name: "Home",
+        phone: "111",
+        addressLine1: "St",
+        city: "C",
+        state: "S",
+        pincode: "111111",
       });
 
       const res = await request(app)
@@ -482,10 +592,19 @@ describe("PhonePe Payment API (/api/v1/phonepe)", () => {
 
   describe("GET /api/v1/phonepe/course-payment-status/:merchantOrderId", () => {
     test("Should return success for completed payment and grant enrollment", async () => {
-      const instructor = await User.create({ name: "Prof", email: "prof@test.com", password: "x", role: "Instructor" });
+      const instructor = await User.create({
+        name: "Prof",
+        email: "prof@test.com",
+        password: "x",
+        role: "Instructor",
+      });
       const course = await Course.create({
-        title: "Paid Course", slug: "paid-course", price: 999, status: "Published",
-        instructorId: instructor.id, level: "Beginner",
+        title: "Paid Course",
+        slug: "paid-course",
+        price: 999,
+        status: "Published",
+        instructorId: instructor.id,
+        level: "Beginner",
       });
 
       const txn = await Transaction.create({

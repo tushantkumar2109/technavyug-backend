@@ -1,4 +1,8 @@
-import { StandardCheckoutClient, Env, StandardCheckoutPayRequest } from "@phonepe-pg/pg-sdk-node";
+import {
+  StandardCheckoutClient,
+  Env,
+  StandardCheckoutPayRequest,
+} from "@phonepe-pg/pg-sdk-node";
 import Logger from "../utils/logger.js";
 
 let phonepeClient = null;

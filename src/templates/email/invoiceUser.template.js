@@ -18,16 +18,26 @@ const invoiceUserTemplate = (user, order, companyInfo) => {
     .join("");
 
   const addr = order.shippingAddress || {};
-  const addressStr = [addr.name, addr.addressLine1, addr.addressLine2, addr.city, addr.state, addr.pincode]
+  const addressStr = [
+    addr.name,
+    addr.addressLine1,
+    addr.addressLine2,
+    addr.city,
+    addr.state,
+    addr.pincode,
+  ]
     .filter(Boolean)
     .join(", ");
 
-  const orderDate = new Date(order.createdAt || Date.now()).toLocaleDateString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const orderDate = new Date(order.createdAt || Date.now()).toLocaleDateString(
+    "en-IN",
+    {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    },
+  );
 
   const subtotal = parseFloat(order.subtotal || 0).toFixed(2);
   const cgst = parseFloat(order.cgstAmount || 0).toFixed(2);
@@ -118,12 +128,16 @@ const invoiceUserTemplate = (user, order, companyInfo) => {
             <td style="padding:6px 0; font-size:13px; color:#6b7280;">SGST (9%):</td>
             <td style="padding:6px 0; font-size:13px; color:#374151; text-align:right; font-weight:600;">₹${sgst}</td>
           </tr>
-          ${discount > 0 ? `
+          ${
+            discount > 0
+              ? `
           <tr>
             <td style="padding:6px 0; font-size:13px; color:#059669;">Discount${order.couponCode ? ` (${order.couponCode})` : ""}:</td>
             <td style="padding:6px 0; font-size:13px; color:#059669; text-align:right; font-weight:600;">-₹${discount.toFixed(2)}</td>
           </tr>
-          ` : ""}
+          `
+              : ""
+          }
           <tr>
             <td colspan="2" style="border-top:2px solid #0f2c59; padding-top:10px;"></td>
           </tr>

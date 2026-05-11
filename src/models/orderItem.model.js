@@ -28,7 +28,7 @@ const OrderItem = sequelize.define("OrderItem", {
   gstRate: {
     type: DataTypes.DECIMAL(5, 2),
     allowNull: false,
-    defaultValue: 18.00,
+    defaultValue: 18.0,
     comment: "GST percentage applied to this item",
   },
   gstAmount: {

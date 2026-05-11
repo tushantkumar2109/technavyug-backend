@@ -21,7 +21,9 @@ const validateCoupon = async (req, res) => {
     }
 
     if (!coupon.isActive) {
-      return res.status(400).json({ message: "This coupon is no longer active" });
+      return res
+        .status(400)
+        .json({ message: "This coupon is no longer active" });
     }
 
     // Check expiry
@@ -32,7 +34,9 @@ const validateCoupon = async (req, res) => {
 
     // Check usage limit
     if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
-      return res.status(400).json({ message: "This coupon has reached its usage limit" });
+      return res
+        .status(400)
+        .json({ message: "This coupon has reached its usage limit" });
     }
 
     // Check applicability
@@ -60,7 +64,9 @@ const validateCoupon = async (req, res) => {
     });
 
     if (existingUsage) {
-      return res.status(400).json({ message: "You have already used this coupon" });
+      return res
+        .status(400)
+        .json({ message: "You have already used this coupon" });
     }
 
     // Calculate discount
@@ -68,7 +74,10 @@ const validateCoupon = async (req, res) => {
     if (coupon.discountType === "percentage") {
       discountAmount = (orderAmount * parseFloat(coupon.discountValue)) / 100;
       if (coupon.maxDiscount) {
-        discountAmount = Math.min(discountAmount, parseFloat(coupon.maxDiscount));
+        discountAmount = Math.min(
+          discountAmount,
+          parseFloat(coupon.maxDiscount),
+        );
       }
     } else {
       discountAmount = Math.min(parseFloat(coupon.discountValue), orderAmount);
@@ -137,7 +146,8 @@ const createCoupon = async (req, res) => {
 
     if (!code || !discountType || !discountValue || !expiryDate) {
       return res.status(400).json({
-        message: "code, discountType, discountValue, and expiryDate are required",
+        message:
+          "code, discountType, discountValue, and expiryDate are required",
       });
     }
 
@@ -146,7 +156,9 @@ const createCoupon = async (req, res) => {
       where: { code: code.toUpperCase().trim() },
     });
     if (existing) {
-      return res.status(409).json({ message: "A coupon with this code already exists" });
+      return res
+        .status(409)
+        .json({ message: "A coupon with this code already exists" });
     }
 
     const coupon = await Coupon.create({
@@ -161,7 +173,9 @@ const createCoupon = async (req, res) => {
     });
 
     Logger.info("Coupon created", { couponId: coupon.id, code: coupon.code });
-    res.status(201).json({ message: "Coupon created successfully", data: coupon });
+    res
+      .status(201)
+      .json({ message: "Coupon created successfully", data: coupon });
   } catch (error) {
     Logger.error("Error creating coupon", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -198,7 +212,9 @@ const updateCoupon = async (req, res) => {
     await coupon.update(updates);
 
     Logger.info("Coupon updated", { couponId: coupon.id });
-    res.status(200).json({ message: "Coupon updated successfully", data: coupon });
+    res
+      .status(200)
+      .json({ message: "Coupon updated successfully", data: coupon });
   } catch (error) {
     Logger.error("Error updating coupon", error);
     res.status(500).json({ message: "Internal Server Error" });

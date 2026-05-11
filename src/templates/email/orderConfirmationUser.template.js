@@ -14,7 +14,14 @@ const orderConfirmationUserTemplate = (name, order) => {
     .join("");
 
   const addr = order.shippingAddress || {};
-  const addressStr = [addr.name, addr.addressLine1, addr.addressLine2, addr.city, addr.state, addr.pincode]
+  const addressStr = [
+    addr.name,
+    addr.addressLine1,
+    addr.addressLine2,
+    addr.city,
+    addr.state,
+    addr.pincode,
+  ]
     .filter(Boolean)
     .join(", ");
 
@@ -69,11 +76,15 @@ const orderConfirmationUserTemplate = (name, order) => {
               <td style="padding:4px 0; font-size:13px; color:#6b7280;">GST (18%)</td>
               <td style="padding:4px 0; font-size:13px; color:#374151; text-align:right; font-weight:600;">₹${gstAmount}</td>
             </tr>
-            ${discount > 0 ? `
+            ${
+              discount > 0
+                ? `
             <tr>
               <td style="padding:4px 0; font-size:13px; color:#059669;">Discount${order.couponCode ? ` (${order.couponCode})` : ""}</td>
               <td style="padding:4px 0; font-size:13px; color:#059669; text-align:right; font-weight:600;">-₹${discount.toFixed(2)}</td>
-            </tr>` : ""}
+            </tr>`
+                : ""
+            }
             <tr>
               <td colspan="2" style="border-top:2px solid #e5e7eb; padding-top:8px;"></td>
             </tr>
@@ -84,11 +95,15 @@ const orderConfirmationUserTemplate = (name, order) => {
           </table>
         </div>
 
-        ${addressStr ? `
+        ${
+          addressStr
+            ? `
         <div style="background:#f8fafc; border-radius:8px; padding:15px; margin:20px 0;">
           <p style="margin:0 0 5px 0; font-size:11px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px;">Shipping Address</p>
           <p style="margin:0; font-size:13px; color:#374151; line-height:1.5;">${addressStr}</p>
-        </div>` : ""}
+        </div>`
+            : ""
+        }
 
         <p style="font-size:13px;color:#6b7280;margin-top:25px;line-height:1.6;">
           We'll notify you when your order ships. A detailed tax invoice has been sent separately.<br>

@@ -34,7 +34,15 @@ router.post(
   couponController.createCoupon,
 );
 
-router.put("/:id", authorize("Admin", "Sub Admin"), couponController.updateCoupon);
-router.delete("/:id", authorize("Admin", "Sub Admin"), couponController.deleteCoupon);
+router.put(
+  "/:id",
+  authorize("Admin", "Sub Admin"),
+  couponController.updateCoupon,
+);
+router.delete(
+  "/:id",
+  authorize("Admin", "Sub Admin"),
+  couponController.deleteCoupon,
+);
 
 export default router;

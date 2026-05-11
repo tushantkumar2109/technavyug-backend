@@ -39,7 +39,8 @@ const Coupon = sequelize.define(
     usageLimit: {
       type: DataTypes.INTEGER,
       allowNull: true,
-      comment: "Total number of times this coupon can be used. null = unlimited",
+      comment:
+        "Total number of times this coupon can be used. null = unlimited",
     },
     usedCount: {
       type: DataTypes.INTEGER,

@@ -1,4 +1,9 @@
-const coursePurchaseAdminTemplate = (userName, userEmail, courseName, amount) => {
+const coursePurchaseAdminTemplate = (
+  userName,
+  userEmail,
+  courseName,
+  amount,
+) => {
   return `
   <div style="font-family: Arial, sans-serif; background:#f4f6f8; padding:40px;">
     <div style="max-width:600px;margin:auto;background:#ffffff;border-radius:10px;padding:30px;">

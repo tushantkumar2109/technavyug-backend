@@ -20,11 +20,21 @@ const getMyAddresses = async (req, res) => {
 
 const createAddress = async (req, res) => {
   try {
-    const { name, phone, addressLine1, addressLine2, city, state, pincode, isDefault } =
-      req.body;
+    const {
+      name,
+      phone,
+      addressLine1,
+      addressLine2,
+      city,
+      state,
+      pincode,
+      isDefault,
+    } = req.body;
 
     if (!name || !phone || !addressLine1 || !city || !state || !pincode) {
-      return res.status(400).json({ message: "All required fields must be provided" });
+      return res
+        .status(400)
+        .json({ message: "All required fields must be provided" });
     }
 
     // If setting as default, unset any existing default
@@ -36,7 +46,9 @@ const createAddress = async (req, res) => {
     }
 
     // If this is the first address, make it default automatically
-    const existingCount = await Address.count({ where: { userId: req.user.id } });
+    const existingCount = await Address.count({
+      where: { userId: req.user.id },
+    });
     const shouldBeDefault = isDefault || existingCount === 0;
 
     const address = await Address.create({
@@ -51,8 +63,13 @@ const createAddress = async (req, res) => {
       isDefault: shouldBeDefault,
     });
 
-    Logger.info("Address created", { addressId: address.id, userId: req.user.id });
-    res.status(201).json({ message: "Address created successfully", data: address });
+    Logger.info("Address created", {
+      addressId: address.id,
+      userId: req.user.id,
+    });
+    res
+      .status(201)
+      .json({ message: "Address created successfully", data: address });
   } catch (error) {
     Logger.error("Error creating address", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -71,20 +88,24 @@ const updateAddress = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    const { name, phone, addressLine1, addressLine2, city, state, pincode } = req.body;
+    const { name, phone, addressLine1, addressLine2, city, state, pincode } =
+      req.body;
 
     await address.update({
       name: name || address.name,
       phone: phone || address.phone,
       addressLine1: addressLine1 || address.addressLine1,
-      addressLine2: addressLine2 !== undefined ? addressLine2 : address.addressLine2,
+      addressLine2:
+        addressLine2 !== undefined ? addressLine2 : address.addressLine2,
       city: city || address.city,
       state: state || address.state,
       pincode: pincode || address.pincode,
     });
 
     Logger.info("Address updated", { addressId: address.id });
-    res.status(200).json({ message: "Address updated successfully", data: address });
+    res
+      .status(200)
+      .json({ message: "Address updated successfully", data: address });
   } catch (error) {
     Logger.error("Error updating address", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -148,7 +169,9 @@ const setDefaultAddress = async (req, res) => {
     await address.save();
 
     Logger.info("Default address set", { addressId: address.id });
-    res.status(200).json({ message: "Default address set successfully", data: address });
+    res
+      .status(200)
+      .json({ message: "Default address set successfully", data: address });
   } catch (error) {
     Logger.error("Error setting default address", error);
     res.status(500).json({ message: "Internal Server Error" });

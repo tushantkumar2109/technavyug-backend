@@ -126,7 +126,7 @@ const resendVerificationEmail = async (req, res) => {
 
 const verifyEmail = async (req, res) => {
   try {
-    const token = req.query.token || req.body.token;
+    const token = req.query?.token || req.body?.token;
 
     if (!token) {
       Logger.warn("Email verification attempted without a token");

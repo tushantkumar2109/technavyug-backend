@@ -56,7 +56,8 @@ const createOrder = async (req, res) => {
       }
 
       const taxableAmount = parseFloat(product.price) * item.quantity;
-      const gstAmount = Math.round((taxableAmount * GST_RATE) / 100 * 100) / 100;
+      const gstAmount =
+        Math.round(((taxableAmount * GST_RATE) / 100) * 100) / 100;
       const totalPrice = Math.round((taxableAmount + gstAmount) * 100) / 100;
 
       subtotal += taxableAmount;
@@ -73,7 +74,7 @@ const createOrder = async (req, res) => {
     }
 
     const totalAmount = subtotal + totalGST;
-    const cgstAmount = Math.round(totalGST / 2 * 100) / 100;
+    const cgstAmount = Math.round((totalGST / 2) * 100) / 100;
     const sgstAmount = Math.round((totalGST - cgstAmount) * 100) / 100;
 
     const order = await Order.create({
@@ -90,12 +91,18 @@ const createOrder = async (req, res) => {
       notes,
     });
 
-    // Create order items
+    // Create order items and update stock
     for (const itemData of orderItemsData) {
       await OrderItem.create({
         orderId: order.id,
         ...itemData,
       });
+
+      const product = await Product.findByPk(itemData.productId);
+      if (product.type === "Physical") {
+        product.stock -= itemData.quantity;
+        await product.save();
+      }
     }
 
     const fullOrder = await Order.findByPk(order.id, {

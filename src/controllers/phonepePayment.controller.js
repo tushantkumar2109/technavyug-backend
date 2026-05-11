@@ -1,4 +1,5 @@
 import crypto from "crypto";
+
 import {
   Transaction,
   Course,
@@ -11,13 +12,16 @@ import {
   CouponUsage,
   Address,
 } from "../models/index.js";
+
 import phonepeService from "../services/phonepe.service.js";
 import sendEmail from "../services/email.service.js";
+
 import coursePurchaseUserTemplate from "../templates/email/coursePurchaseUser.template.js";
 import coursePurchaseAdminTemplate from "../templates/email/coursePurchaseAdmin.template.js";
 import orderConfirmationUserTemplate from "../templates/email/orderConfirmationUser.template.js";
 import orderConfirmationAdminTemplate from "../templates/email/orderConfirmationAdmin.template.js";
 import invoiceUserTemplate from "../templates/email/invoiceUser.template.js";
+
 import Logger from "../utils/logger.js";
 
 const GST_RATE = parseFloat(process.env.GST_RATE || 18);
@@ -49,12 +53,14 @@ const getCompanyInfo = () => ({
 });
 
 const getFrontendUrl = () =>
-  process.env.FRONTEND_URL_1 || process.env.FRONTEND_URL_2 || "http://localhost:5173";
+  process.env.FRONTEND_URL_1 ||
+  process.env.FRONTEND_URL_2 ||
+  "http://localhost:5173";
 
 // Helper: Calculate GST for a line item
 const calculateItemGST = (price, quantity, gstRate = GST_RATE) => {
   const taxableAmount = parseFloat(price) * quantity;
-  const gstAmount = Math.round((taxableAmount * gstRate) / 100 * 100) / 100;
+  const gstAmount = Math.round(((taxableAmount * gstRate) / 100) * 100) / 100;
   const totalPrice = Math.round((taxableAmount + gstAmount) * 100) / 100;
   return { taxableAmount, gstAmount, totalPrice, gstRate };
 };
@@ -84,12 +90,16 @@ const applyCoupon = async (couponCode, subtotal, userId, applicableTo) => {
   let discount = 0;
   if (coupon.discountType === "percentage") {
     discount = (subtotal * parseFloat(coupon.discountValue)) / 100;
-    if (coupon.maxDiscount) discount = Math.min(discount, parseFloat(coupon.maxDiscount));
+    if (coupon.maxDiscount)
+      discount = Math.min(discount, parseFloat(coupon.maxDiscount));
   } else {
     discount = Math.min(parseFloat(coupon.discountValue), subtotal);
   }
 
-  return { discountAmount: Math.round(discount * 100) / 100, couponId: coupon.id };
+  return {
+    discountAmount: Math.round(discount * 100) / 100,
+    couponId: coupon.id,
+  };
 };
 
 // Helper: Send all order-related emails (user confirmation, invoice, admin, support)
@@ -100,11 +110,16 @@ const sendOrderEmails = async (transactionOrOrder) => {
 
     const user = await User.findByPk(userId);
     const fullOrder = await Order.findByPk(orderId, {
-      include: [{ model: OrderItem, as: "items", include: [{ model: Product }] }],
+      include: [
+        { model: OrderItem, as: "items", include: [{ model: Product }] },
+      ],
     });
 
     if (!user || !fullOrder) {
-      Logger.error("sendOrderEmails: user or order not found", { userId, orderId });
+      Logger.error("sendOrderEmails: user or order not found", {
+        userId,
+        orderId,
+      });
       return;
     }
 
@@ -144,7 +159,9 @@ const sendOrderEmails = async (transactionOrOrder) => {
       );
     }
 
-    Logger.info("All order emails sent successfully", { orderNumber: fullOrder.orderNumber });
+    Logger.info("All order emails sent successfully", {
+      orderNumber: fullOrder.orderNumber,
+    });
   } catch (emailErr) {
     Logger.error("Failed to send order emails", emailErr);
   }
@@ -154,26 +171,37 @@ const sendOrderEmails = async (transactionOrOrder) => {
 const initiateCoursePurchase = async (req, res) => {
   try {
     const { courseId, couponCode } = req.body;
-    if (!courseId) return res.status(400).json({ message: "courseId is required" });
+    if (!courseId)
+      return res.status(400).json({ message: "courseId is required" });
 
     const course = await Course.findByPk(courseId);
     if (!course) return res.status(404).json({ message: "Course not found" });
     if (course.status !== "Published")
-      return res.status(400).json({ message: "Course is not available for purchase" });
+      return res
+        .status(400)
+        .json({ message: "Course is not available for purchase" });
 
     const price = parseFloat(course.price);
     if (price <= 0)
-      return res.status(400).json({ message: "This is a free course. Enroll directly." });
+      return res
+        .status(400)
+        .json({ message: "This is a free course. Enroll directly." });
 
     // Check if user already owns the course
     const existing = await Enrollment.findOne({
       where: { userId: req.user.id, courseId, status: ["Active", "Completed"] },
     });
-    if (existing) return res.status(400).json({ message: "You already own this course" });
+    if (existing)
+      return res.status(400).json({ message: "You already own this course" });
 
     // Check for a pending transaction (idempotency)
     const pendingTxn = await Transaction.findOne({
-      where: { userId: req.user.id, courseId, paymentType: "course", status: "Pending" },
+      where: {
+        userId: req.user.id,
+        courseId,
+        paymentType: "course",
+        status: "Pending",
+      },
     });
     if (pendingTxn) {
       // Re-initiate payment for the existing pending transaction
@@ -186,13 +214,19 @@ const initiateCoursePurchase = async (req, res) => {
       );
       return res.status(200).json({
         message: "Payment re-initiated",
-        data: { checkoutUrl: ppResponse.redirectUrl, merchantOrderId: pendingTxn.merchantOrderId },
+        data: {
+          checkoutUrl: ppResponse.redirectUrl,
+          merchantOrderId: pendingTxn.merchantOrderId,
+        },
       });
     }
 
     // Apply coupon
     const { discountAmount, couponId } = await applyCoupon(
-      couponCode, price, req.user.id, "course",
+      couponCode,
+      price,
+      req.user.id,
+      "course",
     );
     const finalAmount = Math.max(0, price - discountAmount);
 
@@ -203,7 +237,10 @@ const initiateCoursePurchase = async (req, res) => {
       if (couponId) {
         await Coupon.increment("usedCount", { where: { id: couponId } });
       }
-      return res.status(200).json({ message: "Course enrolled successfully (coupon covered full amount)", data: { paid: false } });
+      return res.status(200).json({
+        message: "Course enrolled successfully (coupon covered full amount)",
+        data: { paid: false },
+      });
     }
 
     const merchantOrderId = generateMerchantOrderId("CRS");
@@ -223,13 +260,22 @@ const initiateCoursePurchase = async (req, res) => {
     const amountInPaise = Math.round(finalAmount * 100);
 
     const ppResponse = await phonepeService.initiatePayment(
-      merchantOrderId, amountInPaise, redirectUrl,
+      merchantOrderId,
+      amountInPaise,
+      redirectUrl,
     );
 
-    Logger.info("Course payment initiated", { transactionId: transaction.id, merchantOrderId });
+    Logger.info("Course payment initiated", {
+      transactionId: transaction.id,
+      merchantOrderId,
+    });
     res.status(200).json({
       message: "Payment initiated",
-      data: { checkoutUrl: ppResponse.redirectUrl, merchantOrderId, transactionId: transaction.id },
+      data: {
+        checkoutUrl: ppResponse.redirectUrl,
+        merchantOrderId,
+        transactionId: transaction.id,
+      },
     });
   } catch (error) {
     Logger.error("Error initiating course payment", error);
@@ -241,14 +287,19 @@ const initiateCoursePurchase = async (req, res) => {
 const getCoursePurchaseStatus = async (req, res) => {
   try {
     const { merchantOrderId } = req.params;
-    const transaction = await Transaction.findOne({ where: { merchantOrderId } });
-    if (!transaction) return res.status(404).json({ message: "Transaction not found" });
+    const transaction = await Transaction.findOne({
+      where: { merchantOrderId },
+    });
+    if (!transaction)
+      return res.status(404).json({ message: "Transaction not found" });
 
     if (transaction.userId !== req.user.id)
       return res.status(403).json({ message: "Not authorized" });
 
     if (transaction.status !== "Pending") {
-      return res.status(200).json({ data: { status: transaction.status, transaction } });
+      return res
+        .status(200)
+        .json({ data: { status: transaction.status, transaction } });
     }
 
     // Verify with PhonePe
@@ -272,7 +323,9 @@ const getCoursePurchaseStatus = async (req, res) => {
         await enrollment.save();
       }
 
-      await Course.increment("totalEnrollments", { where: { id: transaction.courseId } });
+      await Course.increment("totalEnrollments", {
+        where: { id: transaction.courseId },
+      });
 
       // Record coupon usage
       if (transaction.couponId) {
@@ -280,7 +333,9 @@ const getCoursePurchaseStatus = async (req, res) => {
           where: { couponId: transaction.couponId, userId: transaction.userId },
           defaults: { transactionId: transaction.id },
         });
-        await Coupon.increment("usedCount", { where: { id: transaction.couponId } });
+        await Coupon.increment("usedCount", {
+          where: { id: transaction.couponId },
+        });
       }
 
       // Send emails asynchronously
@@ -294,7 +349,12 @@ const getCoursePurchaseStatus = async (req, res) => {
           await sendEmail(
             user.email,
             `Purchase Confirmed: ${course.title}`,
-            coursePurchaseUserTemplate(user.name, course.title, transaction.amount, `${frontendUrl}/student/courses`),
+            coursePurchaseUserTemplate(
+              user.name,
+              course.title,
+              transaction.amount,
+              `${frontendUrl}/student/courses`,
+            ),
           );
           // Admin email (support@technavyug.com)
           const adminEmail = process.env.ADMIN_EMAIL;
@@ -302,7 +362,12 @@ const getCoursePurchaseStatus = async (req, res) => {
             await sendEmail(
               adminEmail,
               `New Course Purchase: ${course.title}`,
-              coursePurchaseAdminTemplate(user.name, user.email, course.title, transaction.amount),
+              coursePurchaseAdminTemplate(
+                user.name,
+                user.email,
+                course.title,
+                transaction.amount,
+              ),
             );
           }
           // Notification email (technavyug@gmail.com)
@@ -311,7 +376,12 @@ const getCoursePurchaseStatus = async (req, res) => {
             await sendEmail(
               notificationEmail,
               `New Course Purchase: ${course.title}`,
-              coursePurchaseAdminTemplate(user.name, user.email, course.title, transaction.amount),
+              coursePurchaseAdminTemplate(
+                user.name,
+                user.email,
+                course.title,
+                transaction.amount,
+              ),
             );
           }
         } catch (emailErr) {
@@ -341,7 +411,9 @@ const initiateOrderPayment = async (req, res) => {
     const { items, addressId, couponCode, notes } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0)
-      return res.status(400).json({ message: "Order must contain at least one item" });
+      return res
+        .status(400)
+        .json({ message: "Order must contain at least one item" });
     if (!addressId)
       return res.status(400).json({ message: "Shipping address is required" });
 
@@ -357,14 +429,21 @@ const initiateOrderPayment = async (req, res) => {
 
     for (const item of items) {
       const product = await Product.findByPk(item.productId);
-      if (!product) return res.status(404).json({ message: `Product not found: ${item.productId}` });
-      if (product.status !== "Active") return res.status(400).json({ message: `Product is not available: ${product.name}` });
+      if (!product)
+        return res
+          .status(404)
+          .json({ message: `Product not found: ${item.productId}` });
+      if (product.status !== "Active")
+        return res
+          .status(400)
+          .json({ message: `Product is not available: ${product.name}` });
       if (product.type === "Physical" && product.stock < item.quantity)
-        return res.status(400).json({ message: `Insufficient stock for: ${product.name}` });
+        return res
+          .status(400)
+          .json({ message: `Insufficient stock for: ${product.name}` });
 
-      const { taxableAmount, gstAmount, totalPrice, gstRate } = calculateItemGST(
-        product.price, item.quantity,
-      );
+      const { taxableAmount, gstAmount, totalPrice, gstRate } =
+        calculateItemGST(product.price, item.quantity);
 
       subtotal += taxableAmount;
       totalGST += gstAmount;
@@ -381,18 +460,27 @@ const initiateOrderPayment = async (req, res) => {
 
     // Apply coupon (discount applied on subtotal + GST total)
     const amountBeforeDiscount = subtotal + totalGST;
-    const { discountAmount, couponId } = await applyCoupon(couponCode, amountBeforeDiscount, req.user.id, "product");
+    const { discountAmount, couponId } = await applyCoupon(
+      couponCode,
+      amountBeforeDiscount,
+      req.user.id,
+      "product",
+    );
     const totalAmount = Math.max(0, amountBeforeDiscount - discountAmount);
 
     // GST split: CGST = 9%, SGST = 9%
-    const cgstAmount = Math.round(totalGST / 2 * 100) / 100;
+    const cgstAmount = Math.round((totalGST / 2) * 100) / 100;
     const sgstAmount = Math.round((totalGST - cgstAmount) * 100) / 100;
 
     // Create order with Pending status (stock not reduced yet)
     const shippingAddressJson = {
-      name: address.name, phone: address.phone,
-      addressLine1: address.addressLine1, addressLine2: address.addressLine2,
-      city: address.city, state: address.state, pincode: address.pincode,
+      name: address.name,
+      phone: address.phone,
+      addressLine1: address.addressLine1,
+      addressLine2: address.addressLine2,
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
     };
 
     const order = await Order.create({
@@ -431,9 +519,16 @@ const initiateOrderPayment = async (req, res) => {
     const redirectUrl = `${getFrontendUrl()}/student/payment-status?merchantOrderId=${merchantOrderId}&type=product`;
     const amountInPaise = Math.round(totalAmount * 100);
 
-    const ppResponse = await phonepeService.initiatePayment(merchantOrderId, amountInPaise, redirectUrl);
+    const ppResponse = await phonepeService.initiatePayment(
+      merchantOrderId,
+      amountInPaise,
+      redirectUrl,
+    );
 
-    Logger.info("Order payment initiated", { orderId: order.id, merchantOrderId });
+    Logger.info("Order payment initiated", {
+      orderId: order.id,
+      merchantOrderId,
+    });
     res.status(200).json({
       message: "Payment initiated",
       data: {
@@ -462,13 +557,18 @@ const initiateOrderPayment = async (req, res) => {
 const getOrderPaymentStatus = async (req, res) => {
   try {
     const { merchantOrderId } = req.params;
-    const transaction = await Transaction.findOne({ where: { merchantOrderId } });
-    if (!transaction) return res.status(404).json({ message: "Transaction not found" });
+    const transaction = await Transaction.findOne({
+      where: { merchantOrderId },
+    });
+    if (!transaction)
+      return res.status(404).json({ message: "Transaction not found" });
     if (transaction.userId !== req.user.id)
       return res.status(403).json({ message: "Not authorized" });
 
     if (transaction.status !== "Pending")
-      return res.status(200).json({ data: { status: transaction.status, transaction } });
+      return res
+        .status(200)
+        .json({ data: { status: transaction.status, transaction } });
 
     const ppStatus = await phonepeService.getPaymentStatus(merchantOrderId);
     const state = ppStatus?.state;
@@ -487,7 +587,9 @@ const getOrderPaymentStatus = async (req, res) => {
         await order.save();
 
         // Reduce stock now
-        const orderItems = await OrderItem.findAll({ where: { orderId: order.id } });
+        const orderItems = await OrderItem.findAll({
+          where: { orderId: order.id },
+        });
         for (const item of orderItems) {
           const product = await Product.findByPk(item.productId);
           if (product && product.type === "Physical") {
@@ -503,7 +605,9 @@ const getOrderPaymentStatus = async (req, res) => {
           where: { couponId: transaction.couponId, userId: transaction.userId },
           defaults: { transactionId: transaction.id },
         });
-        await Coupon.increment("usedCount", { where: { id: transaction.couponId } });
+        await Coupon.increment("usedCount", {
+          where: { id: transaction.couponId },
+        });
       }
 
       // Send all order emails asynchronously
@@ -538,11 +642,16 @@ const handleWebhook = async (req, res) => {
     const { merchantOrderId, state, transactionId } = req.body;
     Logger.info("PhonePe webhook received", { merchantOrderId, state });
 
-    if (!merchantOrderId) return res.status(400).json({ message: "Invalid webhook payload" });
+    if (!merchantOrderId)
+      return res.status(400).json({ message: "Invalid webhook payload" });
 
-    const transaction = await Transaction.findOne({ where: { merchantOrderId } });
-    if (!transaction) return res.status(404).json({ message: "Transaction not found" });
-    if (transaction.status !== "Pending") return res.status(200).json({ message: "Already processed" });
+    const transaction = await Transaction.findOne({
+      where: { merchantOrderId },
+    });
+    if (!transaction)
+      return res.status(404).json({ message: "Transaction not found" });
+    if (transaction.status !== "Pending")
+      return res.status(200).json({ message: "Already processed" });
 
     // Verify status with PhonePe directly (never trust webhook data alone)
     const ppStatus = await phonepeService.getPaymentStatus(merchantOrderId);
@@ -550,7 +659,8 @@ const handleWebhook = async (req, res) => {
 
     if (verifiedState === "COMPLETED" && transaction.status === "Pending") {
       transaction.status = "Success";
-      transaction.phonepeTransactionId = ppStatus.transactionId || transactionId;
+      transaction.phonepeTransactionId =
+        ppStatus.transactionId || transactionId;
       transaction.metadata = ppStatus;
       await transaction.save();
 
@@ -559,14 +669,18 @@ const handleWebhook = async (req, res) => {
           where: { userId: transaction.userId, courseId: transaction.courseId },
           defaults: { status: "Active" },
         });
-        await Course.increment("totalEnrollments", { where: { id: transaction.courseId } });
+        await Course.increment("totalEnrollments", {
+          where: { id: transaction.courseId },
+        });
       } else if (transaction.paymentType === "product") {
         const order = await Order.findByPk(transaction.orderId);
         if (order) {
           order.status = "Processing";
           order.paymentId = transaction.phonepeTransactionId;
           await order.save();
-          const orderItems = await OrderItem.findAll({ where: { orderId: order.id } });
+          const orderItems = await OrderItem.findAll({
+            where: { orderId: order.id },
+          });
           for (const item of orderItems) {
             const product = await Product.findByPk(item.productId);
             if (product && product.type === "Physical") {
@@ -587,7 +701,9 @@ const handleWebhook = async (req, res) => {
           where: { couponId: transaction.couponId, userId: transaction.userId },
           defaults: { transactionId: transaction.id },
         });
-        await Coupon.increment("usedCount", { where: { id: transaction.couponId } });
+        await Coupon.increment("usedCount", {
+          where: { id: transaction.couponId },
+        });
       }
     } else if (verifiedState === "FAILED") {
       transaction.status = "Failed";
@@ -614,13 +730,23 @@ const getTransaction = async (req, res) => {
   try {
     const transaction = await Transaction.findByPk(req.params.id, {
       include: [
-        { model: Course, attributes: ["id", "title", "slug", "thumbnail", "price"] },
+        {
+          model: Course,
+          attributes: ["id", "title", "slug", "thumbnail", "price"],
+        },
         { model: Order },
-        { model: Coupon, attributes: ["id", "code", "discountType", "discountValue"] },
+        {
+          model: Coupon,
+          attributes: ["id", "code", "discountType", "discountValue"],
+        },
       ],
     });
-    if (!transaction) return res.status(404).json({ message: "Transaction not found" });
-    if (transaction.userId !== req.user.id && !["Admin", "Sub Admin"].includes(req.user.role))
+    if (!transaction)
+      return res.status(404).json({ message: "Transaction not found" });
+    if (
+      transaction.userId !== req.user.id &&
+      !["Admin", "Sub Admin"].includes(req.user.role)
+    )
       return res.status(403).json({ message: "Not authorized" });
 
     res.status(200).json({ data: transaction });

@@ -14,7 +14,15 @@ const orderConfirmationAdminTemplate = (userName, userEmail, order) => {
     .join("");
 
   const addr = order.shippingAddress || {};
-  const addressStr = [addr.name, addr.phone, addr.addressLine1, addr.addressLine2, addr.city, addr.state, addr.pincode]
+  const addressStr = [
+    addr.name,
+    addr.phone,
+    addr.addressLine1,
+    addr.addressLine2,
+    addr.city,
+    addr.state,
+    addr.pincode,
+  ]
     .filter(Boolean)
     .join(", ");
 
@@ -42,11 +50,15 @@ const orderConfirmationAdminTemplate = (userName, userEmail, order) => {
             <td style="padding:8px 0; font-weight:700; color:#6b7280; font-size:13px; width:120px;">Order #</td>
             <td style="padding:8px 0; color:#111827; font-size:13px; font-weight:600;">${order.orderNumber}</td>
           </tr>
-          ${order.invoiceNumber ? `
+          ${
+            order.invoiceNumber
+              ? `
           <tr>
             <td style="padding:8px 0; font-weight:700; color:#6b7280; font-size:13px;">Invoice #</td>
             <td style="padding:8px 0; color:#111827; font-size:13px; font-weight:600;">${order.invoiceNumber}</td>
-          </tr>` : ""}
+          </tr>`
+              : ""
+          }
           <tr>
             <td style="padding:8px 0; font-weight:700; color:#6b7280; font-size:13px;">Customer</td>
             <td style="padding:8px 0; color:#111827; font-size:13px;">${userName} (${userEmail})</td>
@@ -83,11 +95,15 @@ const orderConfirmationAdminTemplate = (userName, userEmail, order) => {
               <td style="padding:3px 0; font-size:13px; color:#6b7280;">SGST (9%)</td>
               <td style="padding:3px 0; font-size:13px; color:#374151; text-align:right;">₹${sgst}</td>
             </tr>
-            ${discount > 0 ? `
+            ${
+              discount > 0
+                ? `
             <tr>
               <td style="padding:3px 0; font-size:13px; color:#059669;">Discount${order.couponCode ? ` (${order.couponCode})` : ""}</td>
               <td style="padding:3px 0; font-size:13px; color:#059669; text-align:right;">-₹${discount.toFixed(2)}</td>
-            </tr>` : ""}
+            </tr>`
+                : ""
+            }
             <tr>
               <td colspan="2" style="border-top:2px solid #e5e7eb; padding-top:8px;"></td>
             </tr>
@@ -98,11 +114,15 @@ const orderConfirmationAdminTemplate = (userName, userEmail, order) => {
           </table>
         </div>
 
-        ${addressStr ? `
+        ${
+          addressStr
+            ? `
         <div style="background:#f8fafc; border-radius:8px; padding:15px; margin:20px 0;">
           <p style="margin:0 0 5px 0; font-size:11px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px;">Ship To</p>
           <p style="margin:0; font-size:13px; color:#374151;">${addressStr}</p>
-        </div>` : ""}
+        </div>`
+            : ""
+        }
 
       </div>
 
