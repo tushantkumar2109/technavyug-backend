@@ -20,6 +20,10 @@ import Notification from "./notification.model.js";
 import Ticket from "./ticket.model.js";
 import TicketReply from "./ticketReply.model.js";
 import MonthlyGoal from "./monthlyGoal.model.js";
+import Transaction from "./transaction.model.js";
+import Address from "./address.model.js";
+import Coupon from "./coupon.model.js";
+import CouponUsage from "./couponUsage.model.js";
 
 // Auth Relationships
 User.hasMany(RefreshToken, { foreignKey: "userId", onDelete: "CASCADE" });
@@ -130,6 +134,32 @@ TicketReply.belongsTo(User, { foreignKey: "userId" });
 User.hasMany(MonthlyGoal, { foreignKey: "userId", onDelete: "CASCADE" });
 MonthlyGoal.belongsTo(User, { foreignKey: "userId" });
 
+// Transaction Relationships
+User.hasMany(Transaction, { foreignKey: "userId", onDelete: "CASCADE" });
+Transaction.belongsTo(User, { foreignKey: "userId" });
+
+Transaction.belongsTo(Course, { foreignKey: "courseId", constraints: false });
+Transaction.belongsTo(Order, { foreignKey: "orderId", constraints: false });
+Transaction.belongsTo(Coupon, { foreignKey: "couponId", constraints: false });
+
+// Address Relationships
+User.hasMany(Address, { foreignKey: "userId", onDelete: "CASCADE" });
+Address.belongsTo(User, { foreignKey: "userId" });
+
+Order.belongsTo(Address, { foreignKey: "addressId", constraints: false });
+
+// Coupon Usage Relationships
+Coupon.hasMany(CouponUsage, { foreignKey: "couponId", onDelete: "CASCADE" });
+CouponUsage.belongsTo(Coupon, { foreignKey: "couponId" });
+
+User.hasMany(CouponUsage, { foreignKey: "userId", onDelete: "CASCADE" });
+CouponUsage.belongsTo(User, { foreignKey: "userId" });
+
+CouponUsage.belongsTo(Transaction, {
+  foreignKey: "transactionId",
+  constraints: false,
+});
+
 export {
   sequelize,
   User,
@@ -153,4 +183,8 @@ export {
   Ticket,
   TicketReply,
   MonthlyGoal,
+  Transaction,
+  Address,
+  Coupon,
+  CouponUsage,
 };

@@ -16,7 +16,7 @@ const Payment = sequelize.define("Payment", {
     allowNull: false,
   },
   gateway: {
-    type: DataTypes.ENUM("Stripe", "Razorpay"),
+    type: DataTypes.ENUM("Stripe", "Razorpay", "PhonePe"),
     allowNull: false,
   },
   gatewayPaymentId: {
