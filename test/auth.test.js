@@ -271,6 +271,7 @@ describe("Authentication API Endpoints", () => {
 
   // Email Verification Flow Tests
  describe("POST /api/v1/auth/verify-email", () => {
+
     let testUser;
     let validToken;
 
