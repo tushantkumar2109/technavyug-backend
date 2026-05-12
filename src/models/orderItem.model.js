@@ -23,7 +23,25 @@ const OrderItem = sequelize.define("OrderItem", {
   price: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
-    comment: "Price at the time of order",
+    comment: "Unit price at the time of order (before GST)",
+  },
+  gstRate: {
+    type: DataTypes.DECIMAL(5, 2),
+    allowNull: false,
+    defaultValue: 18.0,
+    comment: "GST percentage applied to this item",
+  },
+  gstAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+    comment: "GST amount for this line item (price * qty * gstRate / 100)",
+  },
+  totalPrice: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+    comment: "Total line price including GST (price * qty + gstAmount)",
   },
 });
 

@@ -4,10 +4,20 @@ import { Order, OrderItem, Product, User } from "../models/index.js";
 import { getPagination, getPaginatedResponse } from "../utils/pagination.js";
 import Logger from "../utils/logger.js";
 
+const GST_RATE = parseFloat(process.env.GST_RATE || 18);
+
 const generateOrderNumber = () => {
   const timestamp = Date.now().toString(36).toUpperCase();
   const random = crypto.randomBytes(3).toString("hex").toUpperCase();
   return `ORD-${timestamp}-${random}`;
+};
+
+const generateInvoiceNumber = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = crypto.randomBytes(2).toString("hex").toUpperCase();
+  return `INV-${year}-${ts}${rand}`;
 };
 
 const createOrder = async (req, res) => {
@@ -20,8 +30,9 @@ const createOrder = async (req, res) => {
         .json({ message: "Order must contain at least one item" });
     }
 
-    // Validate products and calculate total
-    let totalAmount = 0;
+    // Validate products and calculate total with GST
+    let subtotal = 0;
+    let totalGST = 0;
     const orderItemsData = [];
 
     for (const item of items) {
@@ -44,37 +55,54 @@ const createOrder = async (req, res) => {
         });
       }
 
-      const itemTotal = parseFloat(product.price) * item.quantity;
-      totalAmount += itemTotal;
+      const taxableAmount = parseFloat(product.price) * item.quantity;
+      const gstAmount =
+        Math.round(((taxableAmount * GST_RATE) / 100) * 100) / 100;
+      const totalPrice = Math.round((taxableAmount + gstAmount) * 100) / 100;
+
+      subtotal += taxableAmount;
+      totalGST += gstAmount;
 
       orderItemsData.push({
         productId: product.id,
         quantity: item.quantity,
         price: product.price,
+        gstRate: GST_RATE,
+        gstAmount,
+        totalPrice,
       });
-
-      // Decrement stock for physical products
-      if (product.type === "Physical") {
-        product.stock -= item.quantity;
-        await product.save();
-      }
     }
+
+    const totalAmount = subtotal + totalGST;
+    const cgstAmount = Math.round((totalGST / 2) * 100) / 100;
+    const sgstAmount = Math.round((totalGST - cgstAmount) * 100) / 100;
 
     const order = await Order.create({
       orderNumber: generateOrderNumber(),
+      invoiceNumber: generateInvoiceNumber(),
       userId: req.user.id,
+      subtotal,
+      gstAmount: totalGST,
+      cgstAmount,
+      sgstAmount,
       totalAmount,
       shippingAddress,
       paymentMethod,
       notes,
     });
 
-    // Create order items
+    // Create order items and update stock
     for (const itemData of orderItemsData) {
       await OrderItem.create({
         orderId: order.id,
         ...itemData,
       });
+
+      const product = await Product.findByPk(itemData.productId);
+      if (product.type === "Physical") {
+        product.stock -= itemData.quantity;
+        await product.save();
+      }
     }
 
     const fullOrder = await Order.findByPk(order.id, {

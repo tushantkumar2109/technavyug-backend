@@ -393,7 +393,7 @@ describe("E-Commerce: Products and Orders", () => {
       });
 
     expect(res.status).toBe(201);
-    expect(parseFloat(res.body.data.totalAmount)).toBeCloseTo(59.98, 2);
+    expect(parseFloat(res.body.data.totalAmount)).toBeCloseTo(70.78, 2);
     expect(res.body.data.items.length).toBe(1);
 
     // Verify stock was decremented

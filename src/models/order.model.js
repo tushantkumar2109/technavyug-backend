@@ -16,9 +16,49 @@ const Order = sequelize.define("Order", {
     type: DataTypes.UUID,
     allowNull: false,
   },
+  subtotal: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+    comment: "Sum of item prices before GST and discount",
+  },
+  gstAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+    comment: "Total GST amount (CGST + SGST)",
+  },
+  cgstAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+    comment: "Central GST (9%)",
+  },
+  sgstAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0,
+    comment: "State GST (9%)",
+  },
   totalAmount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
+    comment: "Final amount = subtotal + gstAmount - discountAmount",
+  },
+  discountAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    comment: "Discount applied via coupon",
+  },
+  invoiceNumber: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+    comment: "Auto-generated invoice number e.g. INV-2026-0001",
+  },
+  couponCode: {
+    type: DataTypes.STRING,
+    allowNull: true,
   },
   status: {
     type: DataTypes.ENUM(
@@ -30,6 +70,11 @@ const Order = sequelize.define("Order", {
       "Refunded",
     ),
     defaultValue: "Pending",
+  },
+  addressId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    comment: "Reference to saved address used for this order",
   },
   shippingAddress: {
     type: DataTypes.JSON,
