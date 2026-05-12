@@ -299,10 +299,15 @@ const logout = async (req, res) => {
     const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken;
 
     if (refreshToken) {
-      await RefreshToken.update(
-        { isRevoked: true },
-        { where: { token: refreshToken } },
-      );
+      try {
+        await RefreshToken.update(
+          { isRevoked: true },
+          { where: { token: refreshToken } },
+        );
+      } catch (revocationError) {
+        Logger.error("Failed to revoke refresh token during logout", revocationError);
+        // Continue with logout anyway
+      }
     }
 
     res.clearCookie("refreshToken");
