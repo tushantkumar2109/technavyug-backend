@@ -20,6 +20,9 @@ import notificationRoutes from "./routes/notification.route.js";
 import ticketRoutes from "./routes/ticket.route.js";
 import contactRoutes from "./routes/contact.route.js";
 import studentRoutes from "./routes/student.route.js";
+import phonepePaymentRoutes from "./routes/phonepePayment.route.js";
+import addressRoutes from "./routes/address.route.js";
+import couponRoutes from "./routes/coupon.route.js";
 
 const app = express();
 
@@ -79,6 +82,9 @@ app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/tickets", ticketRoutes);
 app.use("/api/v1/contact", contactRoutes);
 app.use("/api/v1/student", studentRoutes);
+app.use("/api/v1/phonepe", phonepePaymentRoutes);
+app.use("/api/v1/addresses", addressRoutes);
+app.use("/api/v1/coupons", couponRoutes);
 
 // 404 handler
 app.use((req, res) => {
