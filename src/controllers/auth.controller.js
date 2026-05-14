@@ -10,6 +10,7 @@ import {
   generateAccessToken,
   generateRefreshToken,
 } from "../services/token.service.js";
+import admin from "../config/firebase.js";
 
 import verificationEmailTemplate from "../templates/email/verifyEmail.template.js";
 import resetPasswordTemplate from "../templates/email/resetPassword.template.js";
@@ -507,10 +508,99 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+const googleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ message: "Firebase ID token is required" });
+    }
+
+    // Verify token with Firebase Admin
+    let decodedToken;
+    try {
+      decodedToken = await admin.auth().verifyIdToken(idToken);
+    } catch (firebaseError) {
+      Logger.warn("Invalid Firebase token", { error: firebaseError.message });
+      return res.status(401).json({ message: "Invalid Google token" });
+    }
+
+    const { email, name, picture, uid } = decodedToken;
+
+    // Find or create user
+    let user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      // Create new user
+      user = await User.create({
+        name: name || "Google User",
+        email: email,
+        googleId: uid,
+        emailVerified: true, // Google emails are already verified
+        avatar: picture,
+        role: "Student", // Default role
+      });
+      Logger.info("New user registered via Google", { userId: user.id });
+    } else {
+      // Update existing user with googleId if they didn't have one
+      if (!user.googleId) {
+        user.googleId = uid;
+      }
+      if (!user.avatar && picture) {
+        user.avatar = picture;
+      }
+      user.emailVerified = true;
+      user.lastLoginAt = new Date();
+      await user.save();
+      Logger.info("Existing user logged in via Google", { userId: user.id });
+    }
+
+    if (user.status === "Blocked") {
+      Logger.warn("Login attempt by blocked user via Google", { email });
+      return res.status(403).json({ message: "Account has been blocked" });
+    }
+
+    // Generate our JWT tokens
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user, true); // Remember me by default for Google Auth
+
+    const refreshTokenMaxAge = 7 * 24 * 60 * 60 * 1000;
+
+    await RefreshToken.create({
+      userId: user.id,
+      token: refreshToken,
+      expiresAt: new Date(Date.now() + refreshTokenMaxAge),
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: refreshTokenMaxAge,
+    });
+
+    res.status(200).json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+      },
+    });
+  } catch (error) {
+    Logger.error("Error during Google login", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 export default {
   register,
   verifyEmail,
   login,
+  googleLogin,
   refreshAccessToken,
   logout,
   forgotPassword,
