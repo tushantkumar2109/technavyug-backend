@@ -48,9 +48,7 @@ const register = async (req, res) => {
     });
 
     const frontendUrl =
-      process.env.FRONTEND_URL_1 ||
-      process.env.FRONTEND_URL_2 ||
-      "http://localhost:5173";
+      process.env.FRONTEND_URL_1 || process.env.FRONTEND_URL_2;
     const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
     try {
       await sendEmail(
@@ -106,9 +104,7 @@ const resendVerificationEmail = async (req, res) => {
     });
 
     const frontendUrl =
-      process.env.FRONTEND_URL_1 ||
-      process.env.FRONTEND_URL_2 ||
-      "http://localhost:5173";
+      process.env.FRONTEND_URL_1 || process.env.FRONTEND_URL_2;
     const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
     await sendEmail(
@@ -306,7 +302,10 @@ const logout = async (req, res) => {
           { where: { token: refreshToken } },
         );
       } catch (revocationError) {
-        Logger.error("Failed to revoke refresh token during logout", revocationError);
+        Logger.error(
+          "Failed to revoke refresh token during logout",
+          revocationError,
+        );
         // Continue with logout anyway
       }
     }
@@ -340,7 +339,7 @@ const forgotPassword = async (req, res) => {
       expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     });
 
-    const resetUrl = `${process.env.FRONTEND_URL_1 || process.env.FRONTEND_URL_2 || "http://localhost:5173"}/reset-password?token=${token}`;
+    const resetUrl = `${process.env.FRONTEND_URL_1 || process.env.FRONTEND_URL_2}/reset-password?token=${token}`;
     try {
       await sendEmail(
         user.email,

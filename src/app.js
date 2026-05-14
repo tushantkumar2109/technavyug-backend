@@ -24,6 +24,8 @@ import phonepePaymentRoutes from "./routes/phonepePayment.route.js";
 import addressRoutes from "./routes/address.route.js";
 import couponRoutes from "./routes/coupon.route.js";
 
+import Logger from "./utils/logger.js";
+
 const app = express();
 
 // Trust proxy for rate-limiter when behind a reverse proxy
@@ -99,7 +101,7 @@ app.use((err, req, res, next) => {
   const message = err.isOperational ? err.message : "Internal Server Error";
 
   if (process.env.NODE_ENV !== "production") {
-    console.error(err);
+    Logger.error(err);
   }
 
   res.status(statusCode).json({

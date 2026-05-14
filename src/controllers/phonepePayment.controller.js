@@ -47,15 +47,13 @@ const generateInvoiceNumber = () => {
 };
 
 const getCompanyInfo = () => ({
-  name: process.env.COMPANY_NAME || "Technavyug Education",
+  name: process.env.COMPANY_NAME || "Technavyug Pvt. Ltd.",
   gstin: process.env.COMPANY_GSTIN || "",
   address: process.env.COMPANY_ADDRESS || "India",
 });
 
 const getFrontendUrl = () =>
-  process.env.FRONTEND_URL_1 ||
-  process.env.FRONTEND_URL_2 ||
-  "http://localhost:5173";
+  process.env.FRONTEND_URL_1 || process.env.FRONTEND_URL_2;
 
 // Helper: Calculate GST for a line item
 const calculateItemGST = (price, quantity, gstRate = GST_RATE) => {
