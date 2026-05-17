@@ -19,7 +19,7 @@ import Logger from "../utils/logger.js";
 
 const register = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
 
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
@@ -29,14 +29,11 @@ const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const allowedRoles = ["Student", "Instructor"];
-    const assignedRole = allowedRoles.includes(role) ? role : "Student";
-
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      role: assignedRole,
+      role: "Guest", // Force role selection after email verification and login
     });
 
     const verificationToken = crypto.randomBytes(32).toString("hex");
@@ -509,7 +506,7 @@ const deleteAccount = async (req, res) => {
 
 const googleLogin = async (req, res) => {
   try {
-    const { idToken } = req.body;
+    const { idToken, role } = req.body;
 
     if (!idToken) {
       return res.status(400).json({ message: "Firebase ID token is required" });
@@ -528,16 +525,18 @@ const googleLogin = async (req, res) => {
 
     // Find or create user
     let user = await User.findOne({ where: { email } });
+    let isNewUser = false;
 
     if (!user) {
-      // Create new user
+      isNewUser = true;
+      // Create new user with Guest role initially
       user = await User.create({
         name: name || "Google User",
         email: email,
         googleId: uid,
         emailVerified: true, // Google emails are already verified
         avatar: picture,
-        role: "Student", // Default role
+        role: "Guest", // Force them to select role on next screen
       });
       Logger.info("New user registered via Google", { userId: user.id });
     } else {
@@ -588,9 +587,40 @@ const googleLogin = async (req, res) => {
         role: user.role,
         avatar: user.avatar,
       },
+      isNewUser,
     });
   } catch (error) {
     Logger.error("Error during Google login", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const updateRole = async (req, res) => {
+  try {
+    const { role } = req.body;
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.role !== "Guest") {
+      return res.status(400).json({ message: "Role is already set" });
+    }
+
+    const allowedRoles = ["Student", "Instructor"];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ message: "Invalid role selected" });
+    }
+
+    user.role = role;
+    await user.save();
+
+    const { password, ...userData } = user.toJSON();
+    Logger.info("User completed role selection", { userId: user.id, role });
+    res.status(200).json({ message: "Role updated successfully", user: userData });
+  } catch (error) {
+    Logger.error("Error updating user role", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -609,4 +639,5 @@ export default {
   changePassword,
   deleteAccount,
   resendVerificationEmail,
+  updateRole,
 };
